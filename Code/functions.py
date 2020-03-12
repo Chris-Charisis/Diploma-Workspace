@@ -12,8 +12,8 @@ def array_to_raster(array, old_raster_used_for_projection, save_path):
     wkt_projection = old_raster_used_for_projection.GetProjectionRef()
 
     
-    if len(array.shape):
-        array = np.expand_dims(array, axis=0)
+#     if len(array.shape):
+#         array = np.expand_dims(array, axis=0)
 
     no_bands =  array.shape[0]
 
@@ -23,8 +23,9 @@ def array_to_raster(array, old_raster_used_for_projection, save_path):
     DataSet.SetGeoTransform(gt)
     DataSet.SetProjection(wkt_projection)
     
-    
+    print(array.shape)
     for i, image in enumerate(array, 1):
+        print(image.shape)
         DataSet.GetRasterBand(i).WriteArray(image)
     DataSet = None
     
