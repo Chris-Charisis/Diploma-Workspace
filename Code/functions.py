@@ -12,8 +12,8 @@ def array_to_raster(array, old_raster_used_for_projection, save_path):
     wkt_projection = old_raster_used_for_projection.GetProjectionRef()
 
     
-#     if len(array.shape):
-#         array = np.expand_dims(array, axis=0)
+    if len(array.shape)!=3:
+        array = np.expand_dims(array, axis=0)
 
     no_bands =  array.shape[0]
 
@@ -23,9 +23,9 @@ def array_to_raster(array, old_raster_used_for_projection, save_path):
     DataSet.SetGeoTransform(gt)
     DataSet.SetProjection(wkt_projection)
     
-    print(array.shape)
+    # print(array.shape)
     for i, image in enumerate(array, 1):
-        print(image.shape)
+        # print(image.shape)
         DataSet.GetRasterBand(i).WriteArray(image)
     DataSet = None
     
@@ -117,7 +117,7 @@ def fill_missing_values_in_1_band(data,labels,means,std):
         values_to_fill = np.logical_and(no_data_values, label_values)
         
         norm_distr_values = np.random.normal(means[idx],std[idx],data.size)
-        data = np.where(values_to_fill, means[idx], data)
+        data = np.where(values_to_fill, norm_distr_values[idx], data)
     return data
 
 
