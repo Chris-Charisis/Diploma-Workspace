@@ -1,5 +1,13 @@
-Data_2018/
-Data_2019/
+Data_2018/Crop_Masks/
+Data_2018/Landsat8_dataset/
+Data_2018/NDVI_raster.tif
+Data_2018/Sentinel2 _dataset/
+Data_2018/Separate_Bands/
+Data_2019/Crop_Masks/
+Data_2019/Landsat8_dataset/
+Data_2019/Sentinel2_dataset/
+Data_2019/Separate_Bands/
+Data_2019/ndvi_raster.tif
 Code/__pycache__/
 Code/.ipynb_checkpoints/
 Code/Lines.png
