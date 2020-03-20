@@ -1,6 +1,8 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 import os
+import sys
 import gdal
 from osgeo import osr, ogr
 
@@ -58,9 +60,9 @@ def raster_to_vector_polygonize(raster_path, save_path, save_name):
 def read_data_from_1_date(dataset, use_bands, satellite_name):
     #data =[]
     data_list = []
-    files = []
+   # files = []
 
-    number_of_files = len(os.listdir(dataset))
+    # number_of_files = len(os.listdir(dataset))
     for i in use_bands:
         temp = rasterio.open(dataset + satellite_name + str(i) + '.tif')
         #data.append(temp)
@@ -91,7 +93,8 @@ def calculate_EVI(blue, red, nir):
 
 
 def calculate_means_of_classes_in_1_band(data, labels):
-    dif_labels = np.unique(labels)
+    dif_labels = np.unique(labels)[1:]
+    # print(dif_labels)
     means = []
     std = []
     no_data = -9999
@@ -107,9 +110,9 @@ def calculate_means_of_classes_in_1_band(data, labels):
 
 
 
-def fill_missing_values_in_1_band(data,labels,means,std):
+def spatial_fill_missing_values_in_1_band(data,labels,means,std):
     
-    dif_labels = np.unique(labels)
+    dif_labels = np.unique(labels)[1:]
     no_data = -9999
     no_data_values = data==no_data
     for idx,label in enumerate(dif_labels):
@@ -120,6 +123,42 @@ def fill_missing_values_in_1_band(data,labels,means,std):
         data = np.where(values_to_fill, norm_distr_values[idx], data)
     return data
 
+def temporal_fill_missing_values(data_list, labels):
+    dif_labels = np.unique(labels)[1:]
+    no_data = -9999
+    
+    first_and_last_dates = [data_list[0],data_list[-1]]
+    # print(len(first_and_last_dates))
+    
+    #fill spatially first and last date 
+    for date in first_and_last_dates:
+        for band in date:
+            # plt.figure(figsize=(50,20))
+            # plt.imshow(band)            
+            means,std = calculate_means_of_classes_in_1_band(band, labels)
+            band = spatial_fill_missing_values_in_1_band(band, labels, means, std)
+            # plt.figure(figsize=(50,20))
+            # plt.imshow(band)  
+    
+    #for every date except first and last
+    for date in range(1,len(data_list)-1):
+        no_data_values = data_list[date]==no_data
+        #for every band in the current date
+        for index,band in enumerate(data_list[date]):
+
+            # plt.figure(figsize=(50,20))
+            # plt.imshow(band)
+
+            #for every crop label selected for processing
+            for idx,label in enumerate(dif_labels):
+                label_values = labels==label
+                values_to_fill = np.logical_and(no_data_values[index], label_values)
+                
+                
+                band = np.where(values_to_fill,(data_list[date-1][index] + data_list[date+1][index])/2, band)
+                # plt.figure(figsize=(50,20))
+                # plt.imshow(band)
+    return data_list
 
 def landsat_mask(data,quality_band):
     # 2720 - CLEAR
