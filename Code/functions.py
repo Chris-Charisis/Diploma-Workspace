@@ -1,7 +1,7 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import os
+#import os
 import sys
 import gdal
 from osgeo import osr, ogr

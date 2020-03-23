@@ -15,6 +15,9 @@ import os
 import time
 import gdal
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
+from sklearn.model_selection import GridSearchCV
 # from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC, LinearSVR
 # from sklearn.neighbors import KNeighborsClassifier
@@ -281,22 +284,117 @@ if pixel_based_analysis=='n':
 
 
 #COMBINE NDVI AND EVI INDECES TO ONE ARRAY
-data_array_combined = ndvi
+data_array_combined = data_array_ndvi
 
 print(len(data_array_combined))
 number_of_bands_combined = len(data_array_combined)
 print(data_array_combined.shape)
 
 data_array_combined_flatten = np.transpose(data_array_combined.reshape((number_of_bands_combined,-1)))
-crops_only_flatten = crops_only.reshape((-1))
+crops_only_flatten = selected_crops_array.reshape((-1))
 print(data_array_combined_flatten.shape)
 print(crops_only_flatten.shape)
 
 x, y = data_array_combined_flatten.shape
 print(x,y)
-X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten, test_size=0.20, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten, test_size=0.50, random_state=42)
 print(X_train.shape)
 print(y_train.shape)
+
+# %%
+mlp_clf = MLPClassifier(max_iter=100,activation='relu',random_state=42)
+parameter_space = {
+    'hidden_layer_sizes': [(7,),(10,),(20,),(40,),(60,),(100,)],
+}
+start_grid = time.time()
+clf = GridSearchCV(mlp_clf, parameter_space, n_jobs=-1, cv=3)
+clf.fit(X_train,y_train)
+end_grid = time.time()
+print("Grid search time: ", end_grid - start_grid)
+print('Best parameters found:\n', clf.best_params_)
+
+
+
+# %%
+mlp_clf = MLPClassifier(hidden_layer_sizes=(100,75,50),max_iter=100,activation='relu',random_state=42, verbose=False,batch_size=200)
+start_train = time.time()
+mlp_clf.fit(X_train,y_train)
+end_train = time.time()
+print("MLP train time: ", end_train - start_train)
+start_test = time.time()
+y_pred = mlp_clf.predict(X_test)
+end_test = time.time()
+print("MLP test time: ", end_test - start_test)
+
+
+print(mlp_clf.loss_)
+
+
+
+
+# %%
+
+start_test = time.time()
+y_train_pred = mlp_clf.predict(X_train)
+end_test = time.time()
+print("Train_accuracy test time: ", end_test - start_test)
+
+#%%
+def accuracy(confusion_matrix):
+   diagonal_sum = confusion_matrix.trace()
+   sum_of_all_elements = confusion_matrix.sum()
+   return diagonal_sum / sum_of_all_elements
+
+cm = confusion_matrix(y_pred, y_test)
+train_cm = confusion_matrix(y_train_pred, y_train)
+print("Test Accuracy of MLPClassifier : ", accuracy(cm))
+print("Train Accuracy of MLPClassifier : ", accuracy(train_cm))
+
+# %%
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def print_confusion_matrix(confusion_matrix, class_names, figsize = (10,7), fontsize=14):
+    """Prints a confusion matrix, as returned by sklearn.metrics.confusion_matrix, as a heatmap.
+    
+    Arguments
+    ---------
+    confusion_matrix: numpy.ndarray
+        The numpy.ndarray object returned from a call to sklearn.metrics.confusion_matrix. 
+        Similarly constructed ndarrays can also be used.
+    class_names: list
+        An ordered list of class names, in the order they index the given confusion matrix.
+    figsize: tuple
+        A 2-long tuple, the first value determining the horizontal size of the ouputted figure,
+        the second determining the vertical size. Defaults to (10,7).
+    fontsize: int
+        Font size for axes labels. Defaults to 14.
+        
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The resulting confusion matrix figure
+    """
+    df_cm = pd.DataFrame(
+        confusion_matrix, index=class_names, columns=class_names, 
+    )
+    fig = plt.figure(figsize=figsize)
+    try:
+        heatmap = sns.heatmap(df_cm, annot=True, fmt="d")
+    except ValueError:
+        raise ValueError("Confusion matrix values must be integers.")
+    heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
+    heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right', fontsize=fontsize)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    return fig
+
+#%% y_pred, y_test
+stat_res = precision_recall_fscore_support(y_test, y_pred,labels=np.unique(selected_crops_array))
+print(stat_res)
+print_confusion_matrix(cm,np.unique(selected_crops_array))
+
 
 
 # In[24]:
@@ -306,12 +404,12 @@ print(y_train.shape)
 # start_train = time.time()
 # clf.fit(X_train, y_train)
 # end_train = time.time()
-# print(end_train - start_train)
+# print("RF train time: ",end_train - start_train)
 
 # start_test = time.time()
 # result = clf.score(X_test,y_test)
 # end_test = time.time()
-# print(end_test - start_test)
+# print("RF test time: ", end_test - start_test)
 
 # print(result)
 
