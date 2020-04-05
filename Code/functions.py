@@ -148,14 +148,14 @@ def temporal_fill_missing_values(data_list, labels):
         data.append(date_data)
     data_list[0] = data[0]
     data_list[-1] = data[-1]
-    plt.figure(figsize=(50,20))
-    plt.imshow(data_list[0][0]) 
-    plt.figure(figsize=(50,20))
-    plt.imshow(data_list[0][1]) 
-    plt.figure(figsize=(50,20))
-    plt.imshow(data_list[-1][0]) 
-    plt.figure(figsize=(50,20))
-    plt.imshow(data_list[-1][1]) 
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(data_list[0][0]) 
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(data_list[0][1]) 
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(data_list[-1][0]) 
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(data_list[-1][1]) 
     #for every date except first and last
 
     for date in range(1,len(data_list)-1):

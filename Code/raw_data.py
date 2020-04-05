@@ -23,7 +23,7 @@ from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC, LinearSVR
 # from sklearn.neighbors import KNeighborsClassifier
 from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, ClusterCentroids
-
+import gc
 
 
 #custom files import
@@ -36,8 +36,8 @@ import functions as fu
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
 
-year = '_2018/'
-# year = '_2019/'
+# year = '_2018/'
+year = '_2019/'
 data_folder_path = workspace_path + '/Data' + year
 labels_folder_path = workspace_path + '/Ground_Truth_Data' + year
 # landsat_dataset = 'Landsat8_dataset/'
@@ -258,20 +258,28 @@ print("Calculate NDVI time: ", end_train - start_train)
 # In[7]:
 
 
-for i,date in enumerate(filled_data):
-    plt.figure(figsize=(50,20))
-    plt.imshow(all_masked_data_dates[i][0])    
-    plt.figure(figsize=(50,20))
-    plt.imshow(date[0])
+# for i,date in enumerate(filled_data):
+#     plt.figure(figsize=(50,20))
+#     plt.imshow(all_masked_data_dates[i][0])    
+#     plt.figure(figsize=(50,20))
+#     plt.imshow(date[0])
 
 # In[8]:
+
+
 
 
 #SAVE NDVI AND EVI RASTERS
 data_array_ndvi = np.squeeze(np.array(ndvi))
 # data_array_evi = np.squeeze(np.array(evi))
 print(data_array_ndvi.shape)
-fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + "ndvi_raster.tif")
+
+
+
+# fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + "ndvi_raster.tif")
+
+
+
 # array_to_raster(data_array_evi,crops_only_tif,data_folder_path + "evi_raster.tif")
 print(data_array_ndvi.shape)
 
@@ -287,13 +295,13 @@ print(data_array_ndvi.shape)
 
 
 #COMBINE NDVI AND EVI INDECES TO ONE ARRAY
-data_array_combined = data_array_ndvi
+data_array_ndvi = data_array_ndvi
 
-print(len(data_array_combined))
-number_of_bands_combined = len(data_array_combined)
-print(data_array_combined.shape)
+print(len(data_array_ndvi))
+number_of_bands_combined = len(data_array_ndvi)
+print(data_array_ndvi.shape)
 
-data_array_combined_flatten = np.transpose(data_array_combined.reshape((number_of_bands_combined,-1)))
+data_array_combined_flatten = np.transpose(data_array_ndvi.reshape((number_of_bands_combined,-1)))
 crops_only_flatten = selected_crops_array.reshape((-1))
 print(data_array_combined_flatten.shape)
 print(crops_only_flatten.shape)
@@ -301,46 +309,68 @@ print(crops_only_flatten.shape)
 x, y = data_array_combined_flatten.shape
 print(x,y)
 
+
+
+# #%%
+# total_elements = len(crops_only_flatten)
+# background_elements = len(crops_only_flatten[crops_only_flatten!=0])
+# resample_dict = {0: int(background_elements)}
+
+# # rus = ClusterCentroids(sampling_strategy='majority')
+# # rus = TomekLinks(sampling_strategy='all')
+# # rus = RandomUnderSampler(sampling_strategy="not minority")
+# rus = OneSidedSelection(sampling_strategy='majority',n_seeds_S=1000)
+
+# print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
+# print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
+# print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
+# print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
+# print()
+# start_train = time.time()
+# X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
+# end_train = time.time()
+# print("Balancing time: ", end_train - start_train)
+# print()
+# print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
+# print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
+# print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
+# print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
+# print()
+
+
+
+
+
+# print(data_array_combined_flatten.shape)
+# print(crops_only_flatten.shape)
+
+# print(X_rus.shape)
+# print(y_rus.shape)
+
+# X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
+# print(X_train.shape)
+# print(y_train.shape)
+
+del(filled_data)
+del(ndvi)
+del(data_array_ndvi)
+gc.collect()
+print("first garbage collection made")
 #%%
-total_elements = len(crops_only_flatten)
-background_elements = len(crops_only_flatten[crops_only_flatten!=0])
-resample_dict = {0: int(background_elements)}
+print("Train-Test splitting")
+X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten,stratify=crops_only_flatten, test_size=0.50, random_state=42)
 
-# rus = ClusterCentroids(sampling_strategy='majority')
-# rus = TomekLinks(sampling_strategy='all')
-# rus = RandomUnderSampler(sampling_strategy="not minority")
-rus = OneSidedSelection(sampling_strategy='majority',n_seeds_S=1000)
-
-print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
-print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
-print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
-print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
-print()
-start_train = time.time()
-X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
-end_train = time.time()
-print("Balancing time: ", end_train - start_train)
-print()
-print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
-print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
-print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
-print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
-print()
+del(data_array_combined_flatten)
+del(crops_only_flatten)
+del(landsat_masked_data)
+del(sentinel_masked_data)
+del(date)
+del(temp)
+del(all_masked_data_dates)
+gc.collect()
 
 
-
-
-
-print(data_array_combined_flatten.shape)
-print(crops_only_flatten.shape)
-
-print(X_rus.shape)
-print(y_rus.shape)
-
-X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
-print(X_train.shape)
-print(y_train.shape)
-
+print("MLP Running")
 # %%
 #SPAT
 #200/100/50 loss=0.07352, 0.9649,0.9767, f1 > 0.88219, b=400 1:30 hours approximately
@@ -387,39 +417,39 @@ plt.savefig('MLP_Conf_Matrix_PBIA_temp_balanced.png')
 # 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
 # 0.95323,0.99918, f1 > 0.823428, 14 mins 'entropy' n=100
 
-rf = RandomForestClassifier(random_state=0,n_estimators=100)#,criterion='entropy')
-start_train = time.time()
-rf.fit(X_train, y_train)
-end_train = time.time()
-print("RF train time: ",end_train - start_train)
+# rf = RandomForestClassifier(random_state=0,n_estimators=100)#,criterion='entropy')
+# start_train = time.time()
+# rf.fit(X_train, y_train)
+# end_train = time.time()
+# print("RF train time: ",end_train - start_train)
 
-start_test = time.time()
-rf_y_pred = rf.predict(X_test)
-end_test = time.time()
-print("RF test time: ", end_test - start_test)
+# start_test = time.time()
+# rf_y_pred = rf.predict(X_test)
+# end_test = time.time()
+# print("RF test time: ", end_test - start_test)
 
-start_test = time.time()
-rf_y_pred_train = rf.predict(X_train)
-end_test = time.time()
-
-
-rf_cm = confusion_matrix(rf_y_pred, y_test)
-rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
-rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
+# start_test = time.time()
+# rf_y_pred_train = rf.predict(X_train)
+# end_test = time.time()
 
 
-print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
-print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
-print(rf_stat_res)
+# rf_cm = confusion_matrix(rf_y_pred, y_test)
+# rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
+# rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
 
-fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
-plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
-#%%
-opt = np.get_printoptions()
-np.set_printoptions(threshold=np.inf)
-importance = rf.feature_importances_
-print((importance))
-np.set_printoptions(**opt)
+
+# print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
+# print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
+# print(rf_stat_res)
+
+# fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
+# plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
+# #%%
+# opt = np.get_printoptions()
+# np.set_printoptions(threshold=np.inf)
+# importance = rf.feature_importances_
+# print((importance))
+# np.set_printoptions(**opt)
 
 # In[37]:
 
