@@ -14,13 +14,17 @@ global os
 import os
 import time
 import gdal
+import csv
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
-from sklearn.model_selection import GridSearchCV
-# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC, LinearSVR
 # from sklearn.neighbors import KNeighborsClassifier
+from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, ClusterCentroids
+
+
 
 #custom files import
 import pathlib
@@ -95,6 +99,7 @@ print(test)
 selected_crops = input('Select crops(names as you see,seperated with 1 space): ')
 temp1 = ex.loc[ex['Category'].isin(selected_crops.split())]
 
+crop_names = (temp1['Category'].values).tolist()
 crop_id = (temp1['Value'].values).tolist()
 print('Crops selected')
 print(temp1)
@@ -121,6 +126,17 @@ if not(fill_only_crops_of_interest):
     selected_crops_array = crops_only
 
 print(np.unique(selected_crops_array))
+
+
+
+with open(data_folder_path + 'crops_names_and_id.csv', 'w') as f:  # Just use 'w' mode in 3.x
+    w = csv.writer(f,delimiter=',')
+    level_counter = 0
+    max_levels = len(crop_id)
+    while level_counter < max_levels:
+        w.writerow((crop_names[level_counter], crop_id[level_counter])) 
+        level_counter = level_counter + 1 
+
 
 
 # In[4]:
@@ -242,23 +258,11 @@ print("Calculate NDVI time: ", end_train - start_train)
 # In[7]:
 
 
-# plt.figure(figsize=(50,20))
-# plt.imshow(landsat_raw_data[4][0])
-plt.figure(figsize=(50,20))
-plt.imshow(landsat_masked_data[4][0])
-# plt.figure(figsize=(50,20))
-# plt.imshow(selected_crops_array)
-plt.figure(figsize=(50,20))
-plt.imshow(landsat_filled_data[4][0])
-# plt.figure(figsize=(50,20))
-# plt.imshow(sentinel_raw_data[6][0])
-plt.figure(figsize=(50,20))
-plt.imshow(sentinel_masked_data[6][0])
-plt.figure(figsize=(50,20))
-plt.imshow(sentinel_filled_data[6][0])
-plt.show()
-
-
+for i,date in enumerate(filled_data):
+    plt.figure(figsize=(50,20))
+    plt.imshow(all_masked_data_dates[i][0])    
+    plt.figure(figsize=(50,20))
+    plt.imshow(date[0])
 
 # In[8]:
 
@@ -272,12 +276,11 @@ fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + "ndvi_raste
 print(data_array_ndvi.shape)
 
 
-# In[3]:
 
+# pixel_based_analysis = input("Conduct Pixel-Based Analisys? (y/n)? ")
+# if pixel_based_analysis=='n':
+#     sys.exit(0)
 
-pixel_based_analysis = input("Conduct Pixel-Based Analisys? (y/n)? ")
-if pixel_based_analysis=='n':
-    sys.exit(0)
 
 
 # In[27]:
@@ -297,40 +300,69 @@ print(crops_only_flatten.shape)
 
 x, y = data_array_combined_flatten.shape
 print(x,y)
-X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten, test_size=0.50, random_state=42)
+
+#%%
+total_elements = len(crops_only_flatten)
+background_elements = len(crops_only_flatten[crops_only_flatten!=0])
+resample_dict = {0: int(background_elements)}
+
+# rus = ClusterCentroids(sampling_strategy='majority')
+# rus = TomekLinks(sampling_strategy='all')
+# rus = RandomUnderSampler(sampling_strategy="not minority")
+rus = OneSidedSelection(sampling_strategy='majority',n_seeds_S=1000)
+
+print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
+print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
+print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
+print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
+print()
+start_train = time.time()
+X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
+end_train = time.time()
+print("Balancing time: ", end_train - start_train)
+print()
+print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
+print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
+print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
+print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
+print()
+
+
+
+
+
+print(data_array_combined_flatten.shape)
+print(crops_only_flatten.shape)
+
+print(X_rus.shape)
+print(y_rus.shape)
+
+X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
 print(X_train.shape)
 print(y_train.shape)
 
 # %%
-mlp_clf = MLPClassifier(max_iter=100,activation='relu',random_state=42)
-parameter_space = {
-    'hidden_layer_sizes': [(7,),(10,),(20,),(40,),(60,),(100,)],
-}
-start_grid = time.time()
-clf = GridSearchCV(mlp_clf, parameter_space, n_jobs=-1, cv=3)
-clf.fit(X_train,y_train)
-end_grid = time.time()
-print("Grid search time: ", end_grid - start_grid)
-print('Best parameters found:\n', clf.best_params_)
+#SPAT
+#200/100/50 loss=0.07352, 0.9649,0.9767, f1 > 0.88219, b=400 1:30 hours approximately
+#200/100/50 loss=0.08871, 0.9645,0.9704, f1 > 0.87899, b=5000 33.5 minutes
+#200/100/50 loss=0.07623, 0.9654,0.9770, f1 > 0.88397, b=200 1:10 hours
+#150/100/50 loss=0.07885, 0.9643,0.9744, f1 > 0.87793, b=400 1:10 hours
 
+#TEMP
+#200/100/50 loss=0.09302, 0.9501,0.9676, f1 > 0.80629 , b=400 2:20 hours approximately
 
-
-# %%
-mlp_clf = MLPClassifier(hidden_layer_sizes=(100,75,50),max_iter=100,activation='relu',random_state=42, verbose=False,batch_size=200)
+mlp_clf = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=400)
 start_train = time.time()
 mlp_clf.fit(X_train,y_train)
 end_train = time.time()
 print("MLP train time: ", end_train - start_train)
+
 start_test = time.time()
 y_pred = mlp_clf.predict(X_test)
 end_test = time.time()
 print("MLP test time: ", end_test - start_test)
 
-
 print(mlp_clf.loss_)
-
-
-
 
 # %%
 
@@ -339,97 +371,55 @@ y_train_pred = mlp_clf.predict(X_train)
 end_test = time.time()
 print("Train_accuracy test time: ", end_test - start_test)
 
-#%%
-def accuracy(confusion_matrix):
-   diagonal_sum = confusion_matrix.trace()
-   sum_of_all_elements = confusion_matrix.sum()
-   return diagonal_sum / sum_of_all_elements
-
 cm = confusion_matrix(y_pred, y_test)
 train_cm = confusion_matrix(y_train_pred, y_train)
-print("Test Accuracy of MLPClassifier : ", accuracy(cm))
-print("Train Accuracy of MLPClassifier : ", accuracy(train_cm))
+print("Test Accuracy of MLPClassifier : ", fu.accuracy(cm))
+print("Train Accuracy of MLPClassifier : ", fu.accuracy(train_cm))
 
-# %%
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-def print_confusion_matrix(confusion_matrix, class_names, figsize = (10,7), fontsize=14):
-    """Prints a confusion matrix, as returned by sklearn.metrics.confusion_matrix, as a heatmap.
-    
-    Arguments
-    ---------
-    confusion_matrix: numpy.ndarray
-        The numpy.ndarray object returned from a call to sklearn.metrics.confusion_matrix. 
-        Similarly constructed ndarrays can also be used.
-    class_names: list
-        An ordered list of class names, in the order they index the given confusion matrix.
-    figsize: tuple
-        A 2-long tuple, the first value determining the horizontal size of the ouputted figure,
-        the second determining the vertical size. Defaults to (10,7).
-    fontsize: int
-        Font size for axes labels. Defaults to 14.
-        
-    Returns
-    -------
-    matplotlib.figure.Figure
-        The resulting confusion matrix figure
-    """
-    df_cm = pd.DataFrame(
-        confusion_matrix, index=class_names, columns=class_names, 
-    )
-    fig = plt.figure(figsize=figsize)
-    try:
-        heatmap = sns.heatmap(df_cm, annot=True, fmt="d")
-    except ValueError:
-        raise ValueError("Confusion matrix values must be integers.")
-    heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
-    heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right', fontsize=fontsize)
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    return fig
-
-#%% y_pred, y_test
 stat_res = precision_recall_fscore_support(y_test, y_pred,labels=np.unique(selected_crops_array))
 print(stat_res)
-print_confusion_matrix(cm,np.unique(selected_crops_array))
+fu.print_confusion_matrix(cm,np.unique(selected_crops_array))
 
-
-
+plt.savefig('MLP_Conf_Matrix_PBIA_temp_balanced.png')
 # In[24]:
+#TEMP
+# 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
+# 0.95323,0.99918, f1 > 0.823428, 14 mins 'entropy' n=100
+
+rf = RandomForestClassifier(random_state=0,n_estimators=100)#,criterion='entropy')
+start_train = time.time()
+rf.fit(X_train, y_train)
+end_train = time.time()
+print("RF train time: ",end_train - start_train)
+
+start_test = time.time()
+rf_y_pred = rf.predict(X_test)
+end_test = time.time()
+print("RF test time: ", end_test - start_test)
+
+start_test = time.time()
+rf_y_pred_train = rf.predict(X_train)
+end_test = time.time()
 
 
-# clf = RandomForestClassifier(random_state=0)
-# start_train = time.time()
-# clf.fit(X_train, y_train)
-# end_train = time.time()
-# print("RF train time: ",end_train - start_train)
-
-# start_test = time.time()
-# result = clf.score(X_test,y_test)
-# end_test = time.time()
-# print("RF test time: ", end_test - start_test)
-
-# print(result)
+rf_cm = confusion_matrix(rf_y_pred, y_test)
+rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
+rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
 
 
-# In[28]:
+print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
+print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
+print(rf_stat_res)
 
-
-# clf = RandomForestClassifier(random_state=0)
-# start_train = time.time()
-# clf.fit(X_train, y_train)
-# end_train = time.time()
-# print(end_train - start_train)
-
-# start_test = time.time()
-# result = clf.score(X_test,y_test)
-# end_test = time.time()
-# print(end_test - start_test)
-
-# print(result)
-
+fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
+plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
+#%%
+opt = np.get_printoptions()
+np.set_printoptions(threshold=np.inf)
+importance = rf.feature_importances_
+print((importance))
+np.set_printoptions(**opt)
 
 # In[37]:
 

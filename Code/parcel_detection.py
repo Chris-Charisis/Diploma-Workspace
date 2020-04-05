@@ -8,10 +8,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import gdal
+import csv
+import sys
 
 #custom files import
 
-import skimage
+import skimage.morphology
 import functions as fu
 
 
@@ -26,9 +28,14 @@ cropped_data ='cropped_data/'
 
 
 #IMPORT LABELS
+with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
+    reader = csv.reader(f)
+    data = dict(reader)
 
-crop_name = ['Cotton', 'Corn', 'Peanuts']
+crop_name = list(data.keys())
 mask_suffix = '_mask.tif'
+
+
 #Read as TIF
 # crop_data_tif = gdal.Open(labels_folder_path + 'CDL.tif')
 #crop_mask_tif = gdal.Open(labels_folder_path + 'CMASK.tif')

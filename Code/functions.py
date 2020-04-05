@@ -1,10 +1,13 @@
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 #import os
 import sys
 import gdal
 from osgeo import osr, ogr
+import seaborn as sns
+import pandas as pd
+
 
 def array_to_raster(array, old_raster_used_for_projection, save_path):
 
@@ -124,31 +127,45 @@ def spatial_fill_missing_values_in_1_band(data,labels,means,std):
     return data
 
 def temporal_fill_missing_values(data_list, labels):
+    data_list = list(data_list)
     dif_labels = np.unique(labels)[1:]
     no_data = -9999
     
     first_and_last_dates = [data_list[0],data_list[-1]]
     # print(len(first_and_last_dates))
-    
+    data = []    
     #fill spatially first and last date 
     for date in first_and_last_dates:
+        date_data = []
         for band in date:
             # plt.figure(figsize=(50,20))
             # plt.imshow(band)            
             means,std = calculate_means_of_classes_in_1_band(band, labels)
             band = spatial_fill_missing_values_in_1_band(band, labels, means, std)
             # plt.figure(figsize=(50,20))
-            # plt.imshow(band)  
-    
+            # plt.imshow(band) 
+            date_data.append(band)
+        data.append(date_data)
+    data_list[0] = data[0]
+    data_list[-1] = data[-1]
+    plt.figure(figsize=(50,20))
+    plt.imshow(data_list[0][0]) 
+    plt.figure(figsize=(50,20))
+    plt.imshow(data_list[0][1]) 
+    plt.figure(figsize=(50,20))
+    plt.imshow(data_list[-1][0]) 
+    plt.figure(figsize=(50,20))
+    plt.imshow(data_list[-1][1]) 
     #for every date except first and last
+
     for date in range(1,len(data_list)-1):
         no_data_values = data_list[date]==no_data
         #for every band in the current date
+        date_data = []
         for index,band in enumerate(data_list[date]):
 
             # plt.figure(figsize=(50,20))
             # plt.imshow(band)
-
             #for every crop label selected for processing
             for idx,label in enumerate(dif_labels):
                 label_values = labels==label
@@ -156,9 +173,26 @@ def temporal_fill_missing_values(data_list, labels):
                 
                 
                 band = np.where(values_to_fill,(data_list[date-1][index] + data_list[date+1][index])/2, band)
-                # plt.figure(figsize=(50,20))
-                # plt.imshow(band)
-    return data_list
+                band = np.where(band<-1,no_data,band)
+
+
+            # plt.figure(figsize=(50,20))
+            # plt.imshow(band)
+
+
+
+            for idx,label in enumerate(dif_labels):
+                label_values = labels==label
+                values_to_fill = np.logical_and(no_data_values[index], label_values)
+                
+                means, std = calculate_means_of_classes_in_1_band(band,labels)
+                band = spatial_fill_missing_values_in_1_band(band,labels,means,std)
+            date_data.append(band)
+        data.insert(-1,date_data)
+            # plt.figure(figsize=(50,20))
+            # plt.imshow(band)
+            
+    return np.array(data)
 
 def landsat_mask(data,quality_band):
     # 2720 - CLEAR
@@ -194,3 +228,45 @@ def sentinel_mask(data, mask):
     
   
     return np.where(data<0, -9999, data)
+
+
+def print_confusion_matrix(confusion_matrix, class_names, figsize = (10,7), fontsize=14):
+    """Prints a confusion matrix, as returned by sklearn.metrics.confusion_matrix, as a heatmap.
+    
+    Arguments
+    ---------
+    confusion_matrix: numpy.ndarray
+        The numpy.ndarray object returned from a call to sklearn.metrics.confusion_matrix. 
+        Similarly constructed ndarrays can also be used.
+    class_names: list
+        An ordered list of class names, in the order they index the given confusion matrix.
+    figsize: tuple
+        A 2-long tuple, the first value determining the horizontal size of the ouputted figure,
+        the second determining the vertical size. Defaults to (10,7).
+    fontsize: int
+        Font size for axes labels. Defaults to 14.
+        
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The resulting confusion matrix figure
+    """
+    df_cm = pd.DataFrame(
+        confusion_matrix, index=class_names, columns=class_names, 
+    )
+    fig = plt.figure(figsize=figsize)
+    try:
+        heatmap = sns.heatmap(df_cm, annot=True, fmt="d")
+    except ValueError:
+        raise ValueError("Confusion matrix values must be integers.")
+    heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
+    heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right', fontsize=fontsize)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    return fig
+
+
+def accuracy(confusion_matrix):
+   diagonal_sum = confusion_matrix.trace()
+   sum_of_all_elements = confusion_matrix.sum()
+   return diagonal_sum / sum_of_all_elements

@@ -1,0 +1,167 @@
+UNDERSAMPLING - RANDOM FOREST EVALUATION (n_estimators = 100, random_state = 0)
+
+test_size_ratio = 0.2
+
+Before Class 0 number of samples:  904454
+Before Class 1 number of samples:  17286
+Before Class 2 number of samples:  145216
+Before Class 10 number of samples:  89712
+
+1) RandomUnderSampler
+	a) Majority only
+		i) To second largest class
+
+			After Class 0 number of samples:  145216
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712
+
+			RF train time:  133.26318860054016
+			RF test time:     1.8955307006835938
+
+			Test accuracy:  0.8992401177565861
+			Train accuracy: 0.9979933573207861
+
+			Precision: 0.94555796, 0.93646139, 0.85107262, 0.90140114
+			Recall:    0.96160865, 0.83135667, 0.92204662, 0.77445243
+			F1 score:  0.95351577, 0.88078455, 0.88513916, 0.8331185
+
+		ii) To mean of all other classes
+
+			After Class 0 number of samples:  84071
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712		
+
+			RF train time:  113.63213276863098
+			RF test time:  	  1.628624439239502
+
+			Test accuracy:  0.8885023120270009
+			Train accuracy: 0.9975838946132001
+
+			Precision: 0.93015929, 0.94102313, 0.85504715, 0.89997429
+			Recall:    0.94813846, 0.83540642, 0.92717694, 0.78024856
+			F1 score:  0.93906282, 0.88507508, 0.88965244, 0.83584585
+
+		iii) To sum of all other classes
+
+			After Class 0 number of samples:  252214
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712		
+
+			RF train time:  209.012704372406
+			RF test time:  	  2.5858218669891357
+
+			Test accuracy:  0.9141010645679282
+			Train accuracy: 0.9981885404741019
+
+			Precision: 0.95647856, 0.93389775, 0.84909975, 0.8998962
+			Recall:    0.97375255, 0.82962106, 0.9076886 , 0.77305913
+			F1 score:  0.96503826, 0.87867647, 0.87741721, 0.83166951
+
+	b)Not minority(same with all as each class is brought down to the smallest class)
+			
+			After Class 0 number of samples:  17286
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  17286
+			After Class 10 number of samples:  17286		
+
+			RF train time:   15.755508184432983
+			RF test time:  	  0.2760138511657715
+
+			Test accuracy:  0.8649215416877576
+			Train accuracy: 0.9996384344210432
+
+			Precision: 0.9050791 , 0.93192628, 0.76002069, 0.87679466
+			Recall:    0.94330344, 0.90685566, 0.84991324, 0.75961817
+			F1 score:  0.92379603, 0.91922006, 0.80245734, 0.81401116
+
+2) Tomek Links
+	a) Majority only
+
+			After Class 0 number of samples:  899335
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712		
+
+			RF train time:  747.927973985672
+			RF test time:  	  5.646915674209595
+
+			Test accuracy:  0.9557769962224827
+			Train accuracy: 0.9986995774169353
+
+			Precision: 0.97765584, 0.94084225, 0.85243919, 0.89824909
+			Recall:    0.99152707, 0.81428985, 0.87360121, 0.75767709
+			F1 score:  0.9845426 , 0.87300357, 0.86289047, 0.82199649
+
+
+	b) Not minority
+
+			After Class 0 number of samples:  899335
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  136605
+			After Class 10 number of samples:  82733		
+
+			RF train time:  640.3059582710266
+			RF test time:  4.621776819229126
+
+			Test accuracy:  0.9647566815732949
+			Train accuracy: 0.9986795295163666
+
+			Precision: 0.98048542, 0.9547603 , 0.88128512, 0.92887407
+			Recall:    0.99248889, 0.81805033, 0.89557483, 0.80818275
+			F1 score:  0.98645064, 0.88113413, 0.88837252, 0.86433557
+
+
+	c) all
+
+			After Class 0 number of samples:  899335
+			After Class 1 number of samples:  16271
+			After Class 2 number of samples:  136605
+			After Class 10 number of samples:  82733		
+
+			RF train time:  1182.4227485656738
+			RF test time:     10.670698404312134
+
+			Test accuracy:  0.9650599808801308
+			Train accuracy: 0.9986981733676229
+
+			Precision: 0.98062535, 0.95550921, 0.88287637, 0.92803661
+			Recall:    0.99248333, 0.84480639, 0.89337872, 0.80896839
+			F1 score:  0.98651871, 0.8967542 , 0.88809649, 0.86442156
+
+3) OneSideSelection
+	a) Majority only n_seeds = 200
+
+			After Class 0 number of samples:  296256
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712
+
+			RF train time:   411.8103406429291
+			RF test time:      4.825878143310547
+
+			Test accuracy:  0.9085455904607362
+			Train accuracy: 0.9974542819114992
+
+			Precision: 0.93647807, 0.94451917, 0.85326178, 0.89670315
+			Recall:    0.9743633 , 0.81255424, 0.87594257, 0.76247004
+			F1 score:  0.95504512, 0.87358109, 0.86445343, 0.82415663
+
+	a) Majority only n_seeds = 1000
+
+			After Class 0 number of samples:  151269
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712
+
+			RF train time:   211.60948085784912
+			RF test time:      2.713456153869629
+
+			Test accuracy:  0.8789793920467923
+			Train accuracy: 0.9966789142032182
+
+			Precision: 0.89069429, 0.93800268, 0.85068158, 0.89875328
+			Recall:    0.94942817, 0.80966156, 0.88527356, 0.76336176
+			F1 score:  0.91912388, 0.8691197 , 0.86763292, 0.8255432
