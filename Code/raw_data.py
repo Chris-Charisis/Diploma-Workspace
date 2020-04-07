@@ -22,7 +22,7 @@ from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC, LinearSVR
 # from sklearn.neighbors import KNeighborsClassifier
-from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, ClusterCentroids
+from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
 import gc
 
 
@@ -36,8 +36,8 @@ import functions as fu
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
 
-# year = '_2018/'
-year = '_2019/'
+year = '_2018/'
+# year = '_2019/'
 data_folder_path = workspace_path + '/Data' + year
 labels_folder_path = workspace_path + '/Ground_Truth_Data' + year
 # landsat_dataset = 'Landsat8_dataset/'
@@ -168,12 +168,12 @@ print(landsat_dataset)
 ndvi = []
 filled_data = []
 #Read satellite data and apply mask
-# landsat_raw_data = []
+landsat_raw_data = []
 landsat_masked_data = []
 # landsat_ndvi = []
 # landsat_evi = []
 
-# sentinel_raw_data = []
+sentinel_raw_data = []
 sentinel_masked_data = []
 # sentinel_filled_data =[]
 # sentinel_ndvi = []
@@ -183,12 +183,12 @@ start_train = time.time()
 #Read Raw Data and Apply Masks for each satellite data
 for date in landsat_dataset_list:
     temp = fu.read_data_from_1_date(landsat_dataset + date + cropped_data, landsat_use_bands, landsat8_name)
-#     landsat_raw_data.append(temp)
+    landsat_raw_data.append(temp)
     landsat_masked_data.append(fu.landsat_mask(temp[:-1,:,:], temp[-1]))
 
 for date in sentinel_dataset_list:
     temp = fu.read_data_from_1_date(sentinel_dataset + date + cropped_data, sentinel_use_bands, sentinel2_name)
-#     sentinel_raw_data.append(temp)
+    sentinel_raw_data.append(temp)
     sentinel_masked_data.append(fu.sentinel_mask(temp[:-1,:,:],temp[-1]))
 
 end_train = time.time() 
@@ -196,10 +196,10 @@ print("Read And mask Data time: ", end_train - start_train)
 
 
 #Fill Masked Values with TEMPORAL CALCULATIONS 
-filling_mode = input("Select filling method (spat/temp): ")
+filling_mode = input("Select filling method (spat/temp/none): ")
 start_train = time.time()
 if filling_mode == 'spat':    
-
+    print("Spatial Filling")
     landsat_filled_data =[]
     sentinel_filled_data =[]
 
@@ -227,7 +227,8 @@ if filling_mode == 'spat':
     all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,all_masked_data_dates)))
     print(all_data_dates_names)
 
-else:
+elif filling_mode=='temp':
+    print("Temporal Filling")
     #sort the dates of both satellites
     all_data_dates_names = landsat_dataset_list + sentinel_dataset_list
     all_masked_data_dates = landsat_masked_data + sentinel_masked_data
@@ -237,6 +238,14 @@ else:
     
     
     filled_data = fu.temporal_fill_missing_values(all_masked_data_dates,selected_crops_array)
+else:
+    print("No Filling")
+    all_data_dates_names = landsat_dataset_list + sentinel_dataset_list
+    all_masked_data_dates = landsat_raw_data + sentinel_raw_data
+    print(all_data_dates_names)
+    all_data_dates_names, all_masked_data_dates = zip(*sorted(zip(all_data_dates_names,all_masked_data_dates)))
+    print(all_data_dates_names)
+    filled_data = all_masked_data_dates
     
     
 end_train = time.time()
@@ -295,7 +304,6 @@ print(data_array_ndvi.shape)
 
 
 #COMBINE NDVI AND EVI INDECES TO ONE ARRAY
-data_array_ndvi = data_array_ndvi
 
 print(len(data_array_ndvi))
 number_of_bands_combined = len(data_array_ndvi)
@@ -311,31 +319,31 @@ print(x,y)
 
 
 
-# #%%
-# total_elements = len(crops_only_flatten)
-# background_elements = len(crops_only_flatten[crops_only_flatten!=0])
-# resample_dict = {0: int(background_elements)}
+ #%%
+total_elements = len(crops_only_flatten)
+background_elements = len(crops_only_flatten[crops_only_flatten!=0])
+resample_dict = {0: int(background_elements)}
 
-# # rus = ClusterCentroids(sampling_strategy='majority')
-# # rus = TomekLinks(sampling_strategy='all')
-# # rus = RandomUnderSampler(sampling_strategy="not minority")
-# rus = OneSidedSelection(sampling_strategy='majority',n_seeds_S=1000)
+rus = NeighbourhoodCleaningRule(sampling_strategy='all')
+# rus = TomekLinks(sampling_strategy='all')
+# rus = RandomUnderSampler(sampling_strategy="not minority")
+# rus = OneSidedSelection(sampling_strategy='all',n_seeds_S=1000)
 
-# print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
-# print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
-# print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
-# print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
-# print()
-# start_train = time.time()
-# X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
-# end_train = time.time()
-# print("Balancing time: ", end_train - start_train)
-# print()
-# print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
-# print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
-# print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
-# print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
-# print()
+print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
+print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
+print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
+print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
+print()
+start_train = time.time()
+X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
+end_train = time.time()
+print("Balancing time: ", end_train - start_train)
+print()
+print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
+print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
+print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
+print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
+print()
 
 
 
@@ -347,27 +355,29 @@ print(x,y)
 # print(X_rus.shape)
 # print(y_rus.shape)
 
-# X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
 # print(X_train.shape)
 # print(y_train.shape)
-
+#%%
 del(filled_data)
 del(ndvi)
 del(data_array_ndvi)
-gc.collect()
-print("first garbage collection made")
-#%%
-print("Train-Test splitting")
-X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten,stratify=crops_only_flatten, test_size=0.50, random_state=42)
-
-del(data_array_combined_flatten)
-del(crops_only_flatten)
 del(landsat_masked_data)
 del(sentinel_masked_data)
 del(date)
 del(temp)
 del(all_masked_data_dates)
 gc.collect()
+print("first garbage collection made")
+#%%
+print("Train-Test splitting")
+# X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
+
+X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten,stratify=crops_only_flatten, test_size=0.20, random_state=42)
+
+# del(data_array_combined_flatten)
+# del(crops_only_flatten)
+# gc.collect()
 
 
 print("MLP Running")
@@ -380,7 +390,7 @@ print("MLP Running")
 
 #TEMP
 #200/100/50 loss=0.09302, 0.9501,0.9676, f1 > 0.80629 , b=400 2:20 hours approximately
-
+#200/100/50 loss=0.02112, 0.9864,0.9931, f1 > 0.94223
 mlp_clf = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=400)
 start_train = time.time()
 mlp_clf.fit(X_train,y_train)
@@ -394,7 +404,7 @@ print("MLP test time: ", end_test - start_test)
 
 print(mlp_clf.loss_)
 
-# %%
+
 
 start_test = time.time()
 y_train_pred = mlp_clf.predict(X_train)
@@ -417,39 +427,39 @@ plt.savefig('MLP_Conf_Matrix_PBIA_temp_balanced.png')
 # 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
 # 0.95323,0.99918, f1 > 0.823428, 14 mins 'entropy' n=100
 
-# rf = RandomForestClassifier(random_state=0,n_estimators=100)#,criterion='entropy')
-# start_train = time.time()
-# rf.fit(X_train, y_train)
-# end_train = time.time()
-# print("RF train time: ",end_train - start_train)
+rf = RandomForestClassifier(random_state=0,n_estimators=100,n_jobs=-1)#,criterion='entropy')
+start_train = time.time()
+rf.fit(X_train, y_train)
+end_train = time.time()
+print("RF train time: ",end_train - start_train)
 
-# start_test = time.time()
-# rf_y_pred = rf.predict(X_test)
-# end_test = time.time()
-# print("RF test time: ", end_test - start_test)
+start_test = time.time()
+rf_y_pred = rf.predict(X_test)
+end_test = time.time()
+print("RF test time: ", end_test - start_test)
 
-# start_test = time.time()
-# rf_y_pred_train = rf.predict(X_train)
-# end_test = time.time()
-
-
-# rf_cm = confusion_matrix(rf_y_pred, y_test)
-# rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
-# rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
+start_test = time.time()
+rf_y_pred_train = rf.predict(X_train)
+end_test = time.time()
 
 
-# print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
-# print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
-# print(rf_stat_res)
+rf_cm = confusion_matrix(rf_y_pred, y_test)
+rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
+rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
 
-# fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
-# plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
-# #%%
-# opt = np.get_printoptions()
-# np.set_printoptions(threshold=np.inf)
-# importance = rf.feature_importances_
-# print((importance))
-# np.set_printoptions(**opt)
+
+print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
+print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
+print(rf_stat_res)
+
+fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
+plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
+
+opt = np.get_printoptions()
+np.set_printoptions(threshold=np.inf)
+importance = rf.feature_importances_
+print((importance))
+np.set_printoptions(**opt)
 
 # In[37]:
 

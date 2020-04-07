@@ -149,7 +149,7 @@ Before Class 10 number of samples:  89712
 			Recall:    0.9743633 , 0.81255424, 0.87594257, 0.76247004
 			F1 score:  0.95504512, 0.87358109, 0.86445343, 0.82415663
 
-	a) Majority only n_seeds = 1000
+	b) Majority only n_seeds = 1000
 
 			After Class 0 number of samples:  151269
 			After Class 1 number of samples:  17286
@@ -165,3 +165,174 @@ Before Class 10 number of samples:  89712
 			Precision: 0.89069429, 0.93800268, 0.85068158, 0.89875328
 			Recall:    0.94942817, 0.80966156, 0.88527356, 0.76336176
 			F1 score:  0.91912388, 0.8691197 , 0.86763292, 0.8255432
+
+	c) Majority only n_seeds = 40
+
+			After Class 0 number of samples:  533341
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712
+
+			RF train time:   402.899799823761
+			RF test time:      3.6430463790893555
+
+			Test accuracy:  0.9371017942728389
+			Train accuracy: 0.9982003169733501
+
+			Precision: 0.96385166, 0.94818304, 0.85627857, 0.90165322
+			Recall:    0.98513144, 0.81515765, 0.87718211, 0.77205595
+			F1 score:  0.97437538, 0.87665267, 0.8666043 , 0.83183715
+
+	d) Not minority n_seeds = 40
+
+			After Class 0 number of samples:  461863
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  109656
+			After Class 10 number of samples:  48538
+
+			RF train time:   324.9975845813751
+			RF test time:      3.0197572708129883
+
+			Test accuracy:  0.9417505432693439
+			Train accuracy: 0.9978720232841839
+
+			Precision: 0.96458583, 0.95407654, 0.86226118, 0.88777070
+			Recall:    0.98542864, 0.82933179, 0.87460672, 0.71786156
+			F1 score:  0.97489585, 0.88734138, 0.86839008, 0.79382618
+
+	e) Not minority n_seeds = 1000
+
+			After Class 0 number of samples:  149921
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  41375
+			After Class 10 number of samples:  16966
+
+			RF train time:    75.99888682365417
+			RF test time:      1.1244261264801025
+
+			Test accuracy:  0.8761471957437376
+			Train accuracy: 0.9967689732761392
+
+			Precision: 0.90109788, 0.94885599, 0.76306966, 0.81200000     
+			Recall:    0.97171919, 0.81573619, 0.74259819, 0.41880342
+			F1 score:  0.93507702, 0.87727485, 0.75269476, 0.55259576
+
+	f) Not minority n_seeds = 200
+
+			After Class 0 number of samples:  295986
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  67620
+			After Class 10 number of samples:  31507
+
+			RF train time:    55.974119424819946
+			RF test time:      0.7101061344146729
+
+			Test accuracy:  0.9172162948593598
+			Train accuracy: 0.9974417963197028
+
+			Precision: 0.94330123, 0.95521368, 0.80804817, 0.86440678     
+			Recall:    0.9811308 , 0.80821522, 0.8136646 , 0.59885751
+			F1 score:  0.9618442 , 0.87558759, 0.81084666, 0.70753656
+
+	g) All n_seeds = 200
+
+			After Class 0 number of samples:  302703
+			After Class 1 number of samples:  165
+			After Class 2 number of samples:  67267
+			After Class 10 number of samples:  32503
+
+			RF train time:    52.29968333244324
+			RF test time:      0.7150459289550781
+
+			Test accuracy:  0.9244734750645738
+			Train accuracy: 0.9977057526931794
+
+			Precision: 0.95021476, 1.        , 0.82015411, 0.87616099   
+			Recall:    0.98298674, 0.3030303 , 0.81491117, 0.6094447
+			F1 score:  0.96632297, 0.46511628, 0.81752424, 0.71886056
+
+	h) All n_seeds = 40
+
+			After Class 0 number of samples:  523549
+			After Class 1 number of samples:  31
+			After Class 2 number of samples:  103218
+			After Class 10 number of samples:  49868
+
+			RF train time:    99.33847856521606
+			RF test time:      1.0138320922851562
+
+			Test accuracy:  0.9507071393736977
+			Train accuracy: 0.9982580006354695
+
+			Precision: 0.9711019 , 0.        , 0.86738299, 0.89450168   
+			Recall:    0.98877853, 0.        , 0.86809727, 0.7225787 
+			F1 score:  0.9798605 , 0.        , 0.86773998, 0.79940103
+
+	i) All n_seeds = 1000
+
+			After Class 0 number of samples:  152260
+			After Class 1 number of samples:  887
+			After Class 2 number of samples:  36341
+			After Class 10 number of samples:  18169
+
+			RF train time:    20.098952293395996
+			RF test time:      0.406801700592041
+
+			Test accuracy:  0.8779254550707888
+			Train accuracy: 0.9970203160270881
+
+			Precision: 0.90576905, 0.93693694, 0.75248719, 0.83333333   
+			Recall:    0.97596296, 0.58757062, 0.68684645, 0.45266924
+			F1 score:  0.93955679, 0.72222222, 0.71817005, 0.58666191
+
+4) Neighbourhood Cleaning Rule
+	a) Majority
+
+			After Class 0 number of samples:  892414
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  145216
+			After Class 10 number of samples:  89712
+
+			RF train time:   216.44097566604614
+			RF test time:      1.9297258853912354
+
+			Test accuracy:  0.9602054812472153
+			Train accuracy: 0.9989428875332805
+
+			Precision: 0.97990954, 0.95260504, 0.86698008, 0.90864536 
+			Recall:    0.99417311, 0.81978594, 0.88262232, 0.77495402
+			F1 score:  0.9869898 , 0.88121891, 0.87473127, 0.83649161
+
+	b) Not minority
+
+			After Class 0 number of samples:  892414
+			After Class 1 number of samples:  17286
+			After Class 2 number of samples:  122570
+			After Class 10 number of samples:  70754
+
+			RF train time:   249.52937126159668
+			RF test time:      1.425910234451294
+
+			Test accuracy:  0.9848552843317241
+			Train accuracy: 0.9999716687877301
+
+			Precision: 0.99132479, 0.97829831, 0.94585086, 0.97169741
+			Recall:    0.99684564, 0.82152155, 0.95410786, 0.92678963
+			F1 score:  0.99407755, 0.89308176, 0.94996142, 0.94871238
+
+	c) All
+
+			After Class 0 number of samples:  892414
+			After Class 1 number of samples:  14336
+			After Class 2 number of samples:  122570
+			After Class 10 number of samples:  70754
+
+			RF train time:   249.43239045143127
+			RF test time:      1.4218192100524902
+
+			Test accuracy:  0.9869963411585574
+			Train accuracy: 0.9999988637125465
+
+			Precision: 0.993162  , 0.98878031, 0.94918551, 0.97386059
+			Recall:    0.99685124, 0.95291245, 0.95553561, 0.9241043
+			F1 score:  0.9950032 , 0.9705151 , 0.95234998, 0.94833025

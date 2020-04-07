@@ -193,15 +193,11 @@ y_train_pred_mlp = mlp.predict(X_train_ml)
 end_test = time.time()
 print("Train_accuracy test time: ", end_test - start_test)
 
-def accuracy(confusion_matrix):
-   diagonal_sum = confusion_matrix.trace()
-   sum_of_all_elements = confusion_matrix.sum()
-   return diagonal_sum / sum_of_all_elements
 
 cm = confusion_matrix(y_pred_mlp, y_test_ml)
 train_cm = confusion_matrix(y_train_pred_mlp, y_train_ml)
-print("Test Accuracy of MLPClassifier : ", accuracy(cm))
-print("Train Accuracy of MLPClassifier : ", accuracy(train_cm))
+print("Test Accuracy of MLPClassifier : ", fu.accuracy(cm))
+print("Train Accuracy of MLPClassifier : ", fu.accuracy(train_cm))
 
 
 
@@ -227,7 +223,7 @@ cm_rf = confusion_matrix(y_predict_rf, y_test_ml)
 stat_res = precision_recall_fscore_support(y_test_ml, y_predict_rf,labels=labels_nums)
 print(stat_res)
 fu.print_confusion_matrix(cm_rf,labels_nums)
-print("Test Accuracy of RF Classifier : ", accuracy(cm_rf))
+print("Test Accuracy of RF Classifier : ", fu.accuracy(cm_rf))
 
 rf_obj_importance = rf_obj.feature_importances_
 
@@ -250,7 +246,7 @@ cm_svm = confusion_matrix(y_predict_svm, y_test_ml)
 stat_res_svm = precision_recall_fscore_support(y_test_ml, y_predict_svm,labels=labels_nums)
 print(stat_res)
 fu.print_confusion_matrix(cm_svm,labels_nums)
-print("Test Accuracy of SVM Classifier : ", accuracy(cm_svm))
+print("Test Accuracy of SVM Classifier : ", fu.accuracy(cm_svm))
 
 
 # In[18]:
