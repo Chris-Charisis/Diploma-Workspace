@@ -69,6 +69,9 @@ for i in new_list:
     print(i)
 threshold = input("Enter threshold of number of pixels per parcel for processing: ")
 
+shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.startswith(threshold)])
+
+
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
     data = dict(reader)
@@ -128,26 +131,26 @@ for index in indeces:
         fu.array_to_raster(data_array[i],data,data_folder_path + separate_bands_folder_path + str(index) + '_date_' + str(i+1))
 
    #OPEN SEPERATE BAND TIFS AND CALCULATE STATISTICS USING SHAPEFILES
-#     stats_dicts_for_each_crop_and_date = []
-#     for shape in shapefiles_name_list:
-# #         print(shape)
-#         summed_file_path = shapefiles_folder_path + shape
-# #         print(summed_file_path)
-#         stats_of_each_date = []
-#         for i in range(len(data_tif)):
-# #             print(i)
-#             stats_of_each_date.append(rs.zonal_stats(summed_file_path, data_folder_path + separate_bands_folder_path +  str(index) + '_date_' + str(i+1), stats="count min mean max", nodata=-9999))
-#         stats_dicts_for_each_crop_and_date.append(stats_of_each_date)
+    stats_dicts_for_each_crop_and_date = []
+    for shape in shapefiles_name_list:
+#         print(shape)
+        summed_file_path = shapefiles_folder_path + shape
+#         print(summed_file_path)
+        stats_of_each_date = []
+        for i in range(len(data_tif)):
+#             print(i)
+            stats_of_each_date.append(rs.zonal_stats(summed_file_path, data_folder_path + separate_bands_folder_path +  str(index) + '_date_' + str(i+1), stats="count min mean max", nodata=-9999))
+        stats_dicts_for_each_crop_and_date.append(stats_of_each_date)
 
-#     #SAVE THE STATISTICS AS CSVs
-#     for idx,crop in enumerate(crop_names_list):  
-#         for i in range(len(stats_dicts_for_each_crop_and_date[idx])):
-#             toCSV = stats_dicts_for_each_crop_and_date[idx][i]
-#             keys = toCSV[0].keys()
-#             with open(csv_path + crop_names_list[idx] + '_date_' + str(i+1) + str('_' + index) + '_stats.csv', 'w') as output_file:
-#                 dict_writer = csv.DictWriter(output_file, keys)
-#                 dict_writer.writeheader()
-#                 dict_writer.writerows(toCSV)
+    #SAVE THE STATISTICS AS CSVs
+    for idx,crop in enumerate(crop_names_list):  
+        for i in range(len(stats_dicts_for_each_crop_and_date[idx])):
+            toCSV = stats_dicts_for_each_crop_and_date[idx][i]
+            keys = toCSV[0].keys()
+            with open(csv_path + crop_names_list[idx] + '_date_' + str(i+1) + str('_' + index) + '_stats.csv', 'w') as output_file:
+                dict_writer = csv.DictWriter(output_file, keys)
+                dict_writer.writeheader()
+                dict_writer.writerows(toCSV)
 
 # #READ CSVs WITH STATISTICS, TAKE THE METRIC TO UTILIZE, CREATE DATA AND LABELS ARRAYS PER CROP
     index_means = []
@@ -183,7 +186,7 @@ print(labels.shape)
 #CREATE TRAIN TEST DATASETS FOR ML CLASSIFIERS
 train_test_ratio = 0.2
 
-clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule?: (y/n)')
+clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (y/n): ')
 
 if clean_dataset == 'y':
     
@@ -219,8 +222,8 @@ else:
 
     X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(data, labels, test_size=train_test_ratio, random_state=42,stratify=labels)
 
-#%%
-mlp = MLPClassifier(hidden_layer_sizes=(28,14,7),max_iter=500,activation='relu',random_state=42, verbose=False,batch_size=50)
+#%%   28,14,7  200,100,50
+mlp = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=1000,activation='relu',random_state=42, verbose=True,batch_size=10)
 start_train = time.time()
 mlp.fit(X_train_ml,y_train_ml)
 end_train = time.time()
@@ -261,18 +264,26 @@ rf_obj = RandomForestClassifier(random_state=0)
 start_train = time.time()
 rf_obj.fit(X_train_ml, y_train_ml)
 end_train = time.time()
-print(end_train - start_train)
+print("RF train time: ",end_train - start_train)
 
 start_test = time.time()
 y_predict_rf = rf_obj.predict(X_test_ml)
 end_test = time.time()
-print(end_test - start_test)
+print("RF test time: ", end_test - start_test)
+
+rf_y_pred_train_ml = rf_obj.predict(X_train_ml)
+
 
 cm_rf = confusion_matrix(y_predict_rf, y_test_ml)
-stat_res = precision_recall_fscore_support(y_test_ml, y_predict_rf,labels=labels_nums)
-print(stat_res)
-fu.print_confusion_matrix(cm_rf,labels_nums)
+cm_train_rf = confusion_matrix(rf_y_pred_train_ml, y_train_ml)
+
 print("Test Accuracy of RF Classifier : ", fu.accuracy(cm_rf))
+print("Train Accuracy of RF Classifier : ", fu.accuracy(cm_train_rf))
+
+stat_res_rf = precision_recall_fscore_support(y_test_ml, y_predict_rf,labels=labels_nums)
+print(stat_res_rf)
+fu.print_confusion_matrix(cm_rf,labels_nums)
+
 
 rf_obj_importance = rf_obj.feature_importances_
 
@@ -280,45 +291,65 @@ print(rf_obj_importance)
 # In[17]:
 
 
-clf = SVC(gamma='auto')
+svm_clf = SVC(gamma='auto')
 start_train = time.time()
-clf.fit(X_train_ml, y_train_ml)
+svm_clf.fit(X_train_ml, y_train_ml)
 end_train = time.time()
-print(end_train - start_train)
+print("SVM train time: ",end_train - start_train)
 
 start_test = time.time()
-y_predict_svm = clf.predict(X_test_ml)
+y_predict_svm = svm_clf.predict(X_test_ml)
 end_test = time.time()
-print(end_test - start_test)
+print("SVM test time: ", end_test - start_test)
+
+svm_y_pred_train_ml = svm_clf.predict(X_train_ml)
 
 cm_svm = confusion_matrix(y_predict_svm, y_test_ml)
-stat_res_svm = precision_recall_fscore_support(y_test_ml, y_predict_svm,labels=labels_nums)
-print(stat_res)
-fu.print_confusion_matrix(cm_svm,labels_nums)
+cm_train_svm = confusion_matrix(svm_y_pred_train_ml, y_train_ml)
+
+
 print("Test Accuracy of SVM Classifier : ", fu.accuracy(cm_svm))
+print("Train Accuracy of SVM Classifier : ", fu.accuracy(cm_train_svm))
+
+
+stat_res_svm = precision_recall_fscore_support(y_test_ml, y_predict_svm,labels=labels_nums)
+print(stat_res_svm)
+fu.print_confusion_matrix(cm_svm,labels_nums)
+
+
+
+
 
 
 # In[18]:
 
 
-neigh_num = 4
-neigh = KNeighborsClassifier(n_neighbors=neigh_num)
+neigh_num = 3
+knn_clf = KNeighborsClassifier(n_neighbors=neigh_num)
 
 start_train = time.time()
-neigh.fit(X_train_ml, y_train_ml)
+knn_clf.fit(X_train_ml, y_train_ml)
 end_train = time.time()
 
-print(end_train - start_train)
+print("KNN train time: ",end_train - start_train)
 
 start_test = time.time()
-result = neigh.score(X_test_ml,y_test_ml)
+y_predict_knn = knn_clf.predict(X_test_ml)
 end_test = time.time()
 
-print(end_test - start_test)
+print("KNN test time: ", end_test - start_test)
 
-print(result)
+knn_y_pred_train_ml = knn_clf.predict(X_train_ml)
 
+cm_knn = confusion_matrix(y_predict_knn, y_test_ml)
+cm_train_knn = confusion_matrix(knn_y_pred_train_ml, y_train_ml)
 
+print("Test Accuracy of KNN Classifier : ", fu.accuracy(cm_knn))
+print("Train Accuracy of KNN Classifier : ", fu.accuracy(cm_train_knn))
+
+stat_res_knn = precision_recall_fscore_support(y_test_ml, y_predict_knn,labels=labels_nums)
+print(stat_res_knn)
+fu.print_confusion_matrix(cm_knn,labels_nums)
 # In[19]:
 
 
@@ -348,10 +379,10 @@ for i in range(len(index_labels)):
 # print(X_test[2].shape)
 
 
-# for line in range(len(means)):
-#     plt.plot(means[line])
-# plt.legend(crop_names_list)
-# plt.savefig('Lines.png')
+for line in range(len(means)):
+    plt.plot(means[line])
+plt.legend(crop_names_list)
+plt.savefig('Lines.png')
 
 
 
@@ -375,17 +406,13 @@ for vec in test_data:
         rmse.append((mean_squared_error(crop_graph, vec)))
     results.append(labels_nums[rmse.index(min(rmse))])
     
-    
-       
-diff = results - test_labels
-accuracy = len(diff[diff==0])/len(diff)
-print(accuracy)    
+        
 
 cm = confusion_matrix(test_labels,results )
 stat_res = precision_recall_fscore_support(test_labels, results,labels=labels_nums)
 print(stat_res)
 fu.print_confusion_matrix(cm,labels_nums)
-print("Test Accuracy of SVM Classifier : ", fu.accuracy(cm))
+print("Test Accuracy of RMSE Classifier : ", fu.accuracy(cm))
 
 # In[33]:
 

@@ -275,6 +275,8 @@ print("Calculate NDVI time: ", end_train - start_train)
 
 # In[8]:
 
+    
+
 
 
 
@@ -448,8 +450,8 @@ rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
 rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
 
 
-print("Test Accuracy of RFClassifier : ", fu.accuracy(rf_cm))
-print("Train Accuracy of RFClassifier : ", fu.accuracy(rf_cm_train))
+print("Test Accuracy of RF Classifier : ", fu.accuracy(rf_cm))
+print("Train Accuracy of RF Classifier : ", fu.accuracy(rf_cm_train))
 print(rf_stat_res)
 
 fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))

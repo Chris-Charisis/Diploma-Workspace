@@ -126,6 +126,8 @@ for idx,crop in enumerate(parcel_list_1):
 
 
 
+
+
 # In[4]:
 
 
