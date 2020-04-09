@@ -10,10 +10,14 @@ import pandas as pd
 import gdal
 import csv
 import sys
+import os
 
 #custom files import
 
 import skimage.morphology
+
+import pathlib
+os.chdir(pathlib.Path(__file__).parent.absolute())
 import functions as fu
 
 
@@ -89,11 +93,10 @@ crop_existing_labels = labels[labels['VALUE'].isin(idx2)]
 parcel_list_1 = []
 parcel_list_2 = []
 
-threshold = int(input("Enter threshold of number of pixels per parcel. (press enter for default=200): "))
+threshold = (input("Enter threshold of number of pixels per parcel. (double press enter for default=200): "))
 if threshold=='':
     threshold = 200    
-
-
+threshold = int(threshold)
 for testing in crops_arrays_list:
     opened_image_1 = skimage.morphology.area_opening(testing,connectivity=1,area_threshold=threshold)
     opened_image_2 = skimage.morphology.area_opening(testing,connectivity=2,area_threshold=threshold)
@@ -116,9 +119,10 @@ for idx,crop in enumerate(parcel_list_1):
     plt.imshow(crops_arrays_list[idx])
     plt.figure(figsize=(50,20))
     plt.imshow(crop)
-    plt.figure(figsize=(50,20))
-    plt.imshow(parcel_list_2[idx])
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(parcel_list_2[idx])
     plt.show()
+
 
 
 
@@ -134,6 +138,6 @@ parcel_list = parcel_list_1
 #8-way connectivity
 #parcel_list = parcel_list_2
 for idx,crop in enumerate(crop_name):
-    temp = fu.array_to_raster(parcel_list[idx], crops_tifs[idx], data_folder_path + crop_masks_folder + crop + '_parcel_mask_' + str(threshold))
-    temp = fu.raster_to_vector_polygonize(temp, data_folder_path + shapefile_folder, crop + '_shapefile_'+ str(threshold))
+    temp = fu.array_to_raster(parcel_list[idx], crops_tifs[idx], data_folder_path + crop_masks_folder + str(threshold) + '_parcel_mask_' + crop )
+    temp = fu.raster_to_vector_polygonize(temp, data_folder_path + shapefile_folder, str(threshold) + '_shapefile_' + crop )
 

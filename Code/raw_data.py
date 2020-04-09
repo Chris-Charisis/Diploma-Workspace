@@ -285,7 +285,7 @@ print(data_array_ndvi.shape)
 
 
 
-# fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + "ndvi_raster.tif")
+fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + str(filling_mode) + "_ndvi_raster.tif")
 
 
 

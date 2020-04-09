@@ -19,6 +19,8 @@ import time
 from math import sqrt
 
 import rasterstats as rs
+import pathlib
+os.chdir(pathlib.Path(__file__).parent.absolute())
 import functions as fu
 
 
@@ -30,14 +32,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
+import gc
 
 
 
 # In[10]:
 
 
-# year = '_2018/'
-year = '_2019/'
+year = '_2018/'
+# year = '_2019/'
 data_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Data' + year
 labels_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Ground_Truth_Data' + year
 shapefiles_folder_path = data_folder_path + 'Shapefiles/'
@@ -49,29 +53,21 @@ selected_indeces = input('Write Indeces(seperated with 1 space, options: ndvi, e
 indeces = selected_indeces.split()
 print(indeces)
 
-
-# if 'ndvi' in indeces:
-#     ndvi_data_tif_path = data_folder_path + 'ndvi_raster.tif'
-#     ndvi_data_tif = gdal.Open(ndvi_data_tif_path)
-#     ndvi_data = np.array(ndvi_data_tif.GetRasterBand(1).ReadAsArray())
-#     plot.show(ndvi_data)
-#     print(np.unique(ndvi_data))
-    
-# if 'evi' in indeces:
-#     evi_data_tif_path = data_folder_path + 'evi_raster.tif'
-#     evi_data_tif = gdal.Open(evi_data_tif_path)
-#     evi_data = np.array(evi_data_tif.GetRasterBand(1).ReadAsArray())
-#     plot.show(evi_data)
-#     print(np.unique(evi_data))
-
-
 # In[3]:
 
 
 shapefiles_name_list = os.listdir(data_folder_path + 'Shapefiles/')
-print((shapefiles_name_list))
+shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.endswith('.shp')])
+
+new_list = []
+for file_name in shapefiles_name_list:
+    new_list.append(file_name.split('_')[0])
+
+new_list = list(set(new_list))
+print("Threshold shapelifes detected: ")
+for i in new_list:
+    print(i)
 threshold = input("Enter threshold of number of pixels per parcel for processing: ")
-shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.endswith(threshold + '.shp')])
 
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
@@ -91,10 +87,30 @@ dict_of_indeces_with_data_and_labels_in_list = {}
 for index in indeces:
 #index = 'ndvi'
 
-    data_tif_path = data_folder_path + str(index) + '_raster.tif'
+
+    raster_name_list = os.listdir(data_folder_path)
+    # print(raster_name_list)
+    raster_name_list = sorted([file for file in raster_name_list if file.endswith('.tif')])
+ 
+    new_list = []
+    for file_name in raster_name_list:
+        new_list.append(file_name.split('_')[0])   
+        
+    new_list = list(set(new_list))
+    print("Raster files detected: ")
+    for i in new_list:
+        print(i)
+    filling_mode = input("Enter filling mode for processing: ")
+    
+
+    
+    data_tif_path = data_folder_path + str(filling_mode) + '_' + str(index) + '_raster.tif'    
+    
+    
+    
     data_tif = gdal.Open(data_tif_path)
     data = np.array(data_tif.GetRasterBand(1).ReadAsArray())
-    plot.show(data)
+    # plot.show(data)
 #     print(np.unique(data))
 
 
@@ -165,12 +181,45 @@ print(data.shape)
 print(labels.shape)
 #%%
 #CREATE TRAIN TEST DATASETS FOR ML CLASSIFIERS
-train_test_ratio = 0.5
-  
+train_test_ratio = 0.2
+
+clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule?: (y/n)')
+
+if clean_dataset == 'y':
     
-X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(data, labels, test_size=train_test_ratio, random_state=42,stratify=labels)
+    total_elements = len(labels)
+    background_elements = len(labels[labels!=0])
+    resample_dict = {0: int(background_elements)}
+    
+    rus = NeighbourhoodCleaningRule(sampling_strategy='all')
+    # rus = TomekLinks(sampling_strategy='all')
+    # rus = RandomUnderSampler(sampling_strategy="not minority")
+    # rus = OneSidedSelection(sampling_strategy='all',n_seeds_S=1000)
+    
+    print("Before Class 0 number of samples: ", len(labels[labels==0]))
+    print("Before Class 1 number of samples: ", len(labels[labels==1]))
+    print("Before Class 2 number of samples: ", len(labels[labels==2]))
+    print("Before Class 10 number of samples: ", len(labels[labels==10]))
+    print()
+    start_train = time.time()
+    X_rus, y_rus = rus.fit_sample(data, labels)
+    end_train = time.time()
+    print("Balancing time: ", end_train - start_train)
+    print()
+    print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
+    print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
+    print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
+    print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
+    print()
+    
+        
+    X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(X_rus, y_rus, test_size=train_test_ratio, random_state=42,stratify=y_rus)
 
+else:
 
+    X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(data, labels, test_size=train_test_ratio, random_state=42,stratify=labels)
+
+#%%
 mlp = MLPClassifier(hidden_layer_sizes=(28,14,7),max_iter=500,activation='relu',random_state=42, verbose=False,batch_size=50)
 start_train = time.time()
 mlp.fit(X_train_ml,y_train_ml)
@@ -256,13 +305,13 @@ neigh_num = 4
 neigh = KNeighborsClassifier(n_neighbors=neigh_num)
 
 start_train = time.time()
-neigh.fit(X_train, y_train)
+neigh.fit(X_train_ml, y_train_ml)
 end_train = time.time()
 
 print(end_train - start_train)
 
 start_test = time.time()
-result = neigh.score(X_test,y_test)
+result = neigh.score(X_test_ml,y_test_ml)
 end_test = time.time()
 
 print(end_test - start_test)
@@ -332,6 +381,11 @@ diff = results - test_labels
 accuracy = len(diff[diff==0])/len(diff)
 print(accuracy)    
 
+cm = confusion_matrix(test_labels,results )
+stat_res = precision_recall_fscore_support(test_labels, results,labels=labels_nums)
+print(stat_res)
+fu.print_confusion_matrix(cm,labels_nums)
+print("Test Accuracy of SVM Classifier : ", fu.accuracy(cm))
 
 # In[33]:
 
