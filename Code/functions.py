@@ -3,8 +3,7 @@ import numpy as np
 import rasterio
 #import os
 import sys
-import gdal
-from osgeo import osr, ogr
+from osgeo import osr, ogr, gdal
 import seaborn as sns
 import pandas as pd
 
@@ -24,7 +23,7 @@ def array_to_raster(array, old_raster_used_for_projection, save_path):
 
     
     driver = gdal.GetDriverByName('GTiff')
-    DataSet = driver.Create(save_path, height, width, no_bands, gdal.GDT_Float64)
+    DataSet = driver.Create(save_path, height, width, no_bands, gdal.GDT_Float32)
     DataSet.SetGeoTransform(gt)
     DataSet.SetProjection(wkt_projection)
     
@@ -67,9 +66,9 @@ def read_data_from_1_date(dataset, use_bands, satellite_name):
 
     # number_of_files = len(os.listdir(dataset))
     for i in use_bands:
-        temp = rasterio.open(dataset + satellite_name + str(i) + '.tif')
+        temp = (rasterio.open(dataset + satellite_name + str(i) + '.tif')).read(1).astype('float32')
         #data.append(temp)
-        data_list.append(temp.read(1).astype('float64'))
+        data_list.append(np.where(temp==65355,0,temp))
 
                   
 #         temp = gdal.Open(dataset + cropped_data + satellite_name + str(i) + '.tif')
@@ -77,8 +76,11 @@ def read_data_from_1_date(dataset, use_bands, satellite_name):
 #         data_list.append(np.array(temp.GetRasterBand(1).ReadAsArray()))  
     number_of_bands = len(data_list)
     print(number_of_bands)
-    data_array = np.array(data_list)
-    return data_array
+    print(data_list[0].shape)
+    print(data_list[1].shape)
+    print(data_list[2].shape)
+    data_list = np.array(data_list)
+    return data_list
 
 #NDVI
 def calculate_NDVI(red, nir):
@@ -126,7 +128,7 @@ def spatial_fill_missing_values_in_1_band(data,labels,means,std):
         data = np.where(values_to_fill, norm_distr_values[idx], data)
     return data
 
-def temporal_fill_missing_values(data_list, labels):
+def temporal_fill_missing_values(data_list, labels,filling_mode):
     data_list = list(data_list)
     dif_labels = np.unique(labels)[1:]
     no_data = -9999
@@ -148,6 +150,7 @@ def temporal_fill_missing_values(data_list, labels):
         data.append(date_data)
     data_list[0] = data[0]
     data_list[-1] = data[-1]
+    print("Done with first and last date")
     # plt.figure(figsize=(50,20))
     # plt.imshow(data_list[0][0]) 
     # plt.figure(figsize=(50,20))
@@ -158,10 +161,11 @@ def temporal_fill_missing_values(data_list, labels):
     # plt.imshow(data_list[-1][1]) 
     #for every date except first and last
 
-    for date in range(1,len(data_list)-1):
+    for number_date,date in enumerate(range(1,len(data_list)-1)):
         no_data_values = data_list[date]==no_data
         #for every band in the current date
         date_data = []
+        print("Starting processing date: ", number_date+1)
         for index,band in enumerate(data_list[date]):
 
             # plt.figure(figsize=(50,20))
@@ -180,13 +184,14 @@ def temporal_fill_missing_values(data_list, labels):
             # plt.imshow(band)
 
 
-
-            for idx,label in enumerate(dif_labels):
-                label_values = labels==label
-                values_to_fill = np.logical_and(no_data_values[index], label_values)
+            if filling_mode=="mixed":
+                for idx,label in enumerate(dif_labels):
+                    label_values = labels==label
+                    values_to_fill = np.logical_and(no_data_values[index], label_values)
+                    
+                    means, std = calculate_means_of_classes_in_1_band(band,labels)
+                    band = spatial_fill_missing_values_in_1_band(band,labels,means,std)
                 
-                means, std = calculate_means_of_classes_in_1_band(band,labels)
-                band = spatial_fill_missing_values_in_1_band(band,labels,means,std)
             date_data.append(band)
         data.insert(-1,date_data)
             # plt.figure(figsize=(50,20))
@@ -210,7 +215,7 @@ def landsat_mask(data,quality_band):
     for i in range(num_of_bands):
         data[i] = np.multiply(data[i], mask)
     
-    return np.where(data<0, -9999, data)
+    return np.where(data<=0, -9999, data)
 
 
 def sentinel_mask(data, mask):
@@ -227,7 +232,7 @@ def sentinel_mask(data, mask):
         data[i] = np.multiply(data[i], mask)
     
   
-    return np.where(data<0, -9999, data)
+    return np.where(data<=0, -9999, data)
 
 
 def print_confusion_matrix(confusion_matrix, class_names, figsize = (10,7), fontsize=14):

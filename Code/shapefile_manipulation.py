@@ -9,7 +9,7 @@ import numpy as np
 from rasterio import plot
 import pandas as pd
 import os
-import gdal
+from osgeo import gdal
 import csv
 import time
 
@@ -33,26 +33,36 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
-import gc
+# import gc
 
 
-
+workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
+print(workspace_path)
 # In[10]:
 
 
-year = '_2018/'
 # year = '_2019/'
-data_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Data' + year
-labels_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Ground_Truth_Data' + year
+year = '_2018/'
+area = '' 
+
+# year = '/'
+# area = '/area_2'
+
+data_folder_path = workspace_path + area + '/Data' + year
+labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
+
+
+
+
 shapefiles_folder_path = data_folder_path + 'Shapefiles/'
 separate_bands_folder_path = 'Separate_Bands/'
 csv_path = data_folder_path + 'CSVs/'
 
 
-selected_indeces = input('Write Indeces(seperated with 1 space, options: ndvi, evi): ')
-indeces = selected_indeces.split()
-print(indeces)
-
+# selected_indeces = input('Write Indeces(seperated with 1 space, options: ndvi, evi): ')
+# indeces = selected_indeces.split()
+# print(indeces)
+indeces = ["ndvi"]
 # In[3]:
 
 

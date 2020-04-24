@@ -1,74 +1,80 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
+#
 
-# In[1]:
-
-
+global os
 import matplotlib.pyplot as plt
 import numpy as np
-# import rasterio
-# from rasterio import plot
 import pandas as pd
 import sys
-global os
+
 import os
 import time
-import gdal
+from osgeo import gdal
 import csv
-from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
-# from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-# from sklearn.svm import SVC, LinearSVR
-# from sklearn.neighbors import KNeighborsClassifier
-from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
+
 import gc
 
 
 #custom files import
 import pathlib
-os.chdir(pathlib.Path(__file__).parent.absolute())
 
+os.chdir(str(pathlib.Path(__file__).parent.absolute()))
+test = pathlib.Path(__file__).parent.absolute()
+
+#%%
 import functions as fu
 #import functions
 
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
 
-year = '_2018/'
 # year = '_2019/'
-data_folder_path = workspace_path + '/Data' + year
-labels_folder_path = workspace_path + '/Ground_Truth_Data' + year
+# year = '_2018/'
+# area = ''
+
+area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+
+
+year = '/'
+area = '/area_' + area_used
+
+data_folder_path = workspace_path + area + '/Data' + year
+labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
+plots_folder_path = workspace_path + area + '/Plots' + year
+
+
+# data_folder_path = workspace_path + year + 'Data/'
+# labels_folder_path = workspace_path + year + 'Ground_Truth_Data/'
 # landsat_dataset = 'Landsat8_dataset/'
 # sentinel_dataset = 'Sentinel2_dataset/'
 
-cropped_data ='cropped_data/'
-
+# cropped_data ='cropped_data/'
+cropped_data = ''
 landsat_use_bands = [4, 5, 12]
 sentinel_use_bands = [4, 8, 'cloud_mask']
 landsat8_name = 'landsat8_band_'
 sentinel2_name = 'sentinel2_band_'
 
-
+metrics_list = ["Precision", "Recall","F1 Score"]
 mask_suffix = '_mask.tif'
 
-
-# In[2]:
+#%%
 
 
 #IMPORT LABELS
-
-
+txt_name = str(input('Name of the file to write results: '))
+file = open(txt_name,"w")
+file.write(area[1:] + "\n\n")
 #Read as TIF
 #crop_data_tif = gdal.Open(labels_folder_path + 'CDL.tif')
 # crop_mask_tif = gdal.Open(labels_folder_path + 'CMASK.tif')
 crops_only_tif = gdal.Open(labels_folder_path + 'CDL_CROPS_ONLY.tif')
-
+print(labels_folder_path)
 #Read as Arrays
-#crop_data = np.array(crop_data_tif.GetRasterBand(1).ReadAsArray())# crop_data_tif.read(1).astype('float64')
-# crop_mask = np.array(crop_mask_tif.GetRasterBand(1).ReadAsArray()) #crop_mask_tif.read(1).astype('float64')
-crops_only = np.array(crops_only_tif.GetRasterBand(1).ReadAsArray()) #crops_only_tif.read(1).astype('float64')
+#crop_data = np.array(crop_data_tif.GetRasterBand(1).ReadAsArray())# crop_data_tif.read(1).astype('float32')
+# crop_mask = np.array(crop_mask_tif.GetRasterBand(1).ReadAsArray()) #crop_mask_tif.read(1).astype('float32')
+crops_only = np.array(crops_only_tif.GetRasterBand(1).ReadAsArray()) #crops_only_tif.read(1).astype('float32')
 
 
 #read csv with crops type
@@ -89,21 +95,23 @@ crop_existing_labels = labels[labels['VALUE'].isin(idx2)]
 # print(crop_existing_labels)
 
 
-# In[3]:
 
+#
 
 ex = existing_labels.loc[existing_labels['Value']<100]
 test = ex.nlargest(10,'Count')
 print('Crops with largest acreage')
 print(test)
-selected_crops = input('Select crops(names as you see,seperated with 1 space): ')
+selected_crops = input('Select crops(names as you see them in Category,seperated with 1 space): ')
 temp1 = ex.loc[ex['Category'].isin(selected_crops.split())]
 
 crop_names = (temp1['Category'].values).tolist()
 crop_id = (temp1['Value'].values).tolist()
 print('Crops selected')
 print(temp1)
-
+file.write('Crops Selected \n')
+file.write(str(temp1) + '\n\n')
+# file.close()
 selected_crops_array = np.zeros((crops_only.shape))
 for value in crop_id:
     selected_crops_array = selected_crops_array + (crops_only==value)
@@ -125,7 +133,9 @@ fill_only_crops_of_interest = True
 if not(fill_only_crops_of_interest):
     selected_crops_array = crops_only
 
-print(np.unique(selected_crops_array))
+
+unique_labels = np.unique(selected_crops_array)
+print(unique_labels)
 
 
 
@@ -139,8 +149,7 @@ with open(data_folder_path + 'crops_names_and_id.csv', 'w') as f:  # Just use 'w
 
 
 
-# In[4]:
-
+#
 
 #Finding the paths of the datasets' folders
 datasets_list = os.listdir(data_folder_path)
@@ -179,24 +188,36 @@ sentinel_masked_data = []
 # sentinel_ndvi = []
 # sentinel_evi = []
 
+filling_mode = input("Select filling method (spat/temp/mixed/none): ")
+file.write("Filling method selected: " + filling_mode + "\n")
+
 start_train = time.time()
 #Read Raw Data and Apply Masks for each satellite data
 for date in landsat_dataset_list:
     temp = fu.read_data_from_1_date(landsat_dataset + date + cropped_data, landsat_use_bands, landsat8_name)
-    landsat_raw_data.append(temp)
-    landsat_masked_data.append(fu.landsat_mask(temp[:-1,:,:], temp[-1]))
+    if filling_mode=='none':
+        landsat_raw_data.append(temp)
+    else:
+        landsat_masked_data.append(fu.landsat_mask(temp[:-1,:,:], temp[-1]))
+    del(temp)
+    gc.collect()
 
 for date in sentinel_dataset_list:
+    print(date)
     temp = fu.read_data_from_1_date(sentinel_dataset + date + cropped_data, sentinel_use_bands, sentinel2_name)
-    sentinel_raw_data.append(temp)
-    sentinel_masked_data.append(fu.sentinel_mask(temp[:-1,:,:],temp[-1]))
-
+    if filling_mode=='none':
+        sentinel_raw_data.append(temp)
+    else:
+        sentinel_masked_data.append(fu.sentinel_mask(temp[:-1,:,:],temp[-1]))
+    del(temp)
+    gc.collect()
+    
 end_train = time.time() 
-print("Read And mask Data time: ", end_train - start_train)
+print("Read and Mask Data time: ", end_train - start_train)
+file.write("Read and Mask Data time: " + str(end_train - start_train) + "\n")
 
 
-#Fill Masked Values with TEMPORAL CALCULATIONS 
-filling_mode = input("Select filling method (spat/temp/none): ")
+
 start_train = time.time()
 if filling_mode == 'spat':    
     print("Spatial Filling")
@@ -211,6 +232,9 @@ if filling_mode == 'spat':
             means,std = fu.calculate_means_of_classes_in_1_band(band, selected_crops_array)
             temp.append(fu.spatial_fill_missing_values_in_1_band(band, selected_crops_array, means, std))
         landsat_filled_data.append(np.array(temp))
+
+    del(landsat_masked_data)
+    gc.collect()
         
     for date in sentinel_masked_data:
         temp = []
@@ -219,86 +243,102 @@ if filling_mode == 'spat':
             temp.append(fu.spatial_fill_missing_values_in_1_band(band, selected_crops_array, means,std))
         sentinel_filled_data.append(np.array(temp))
 
+    del(sentinel_masked_data)
+    gc.collect()
+
     
     #sort the dates of both satellites
     all_data_dates_names = landsat_dataset_list + sentinel_dataset_list
-    all_masked_data_dates = landsat_filled_data + sentinel_filled_data
+    filled_data = landsat_filled_data + sentinel_filled_data
     print(all_data_dates_names)
-    all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,all_masked_data_dates)))
+    all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,filled_data)))
     print(all_data_dates_names)
 
-elif filling_mode=='temp':
+elif filling_mode=='temp' or filling_mode=='mixed':
+
+    # Fill Masked Values with TEMPORAL CALCULATIONS
     print("Temporal Filling")
     #sort the dates of both satellites
     all_data_dates_names = landsat_dataset_list + sentinel_dataset_list
-    all_masked_data_dates = landsat_masked_data + sentinel_masked_data
+    filled_data = landsat_masked_data + sentinel_masked_data
     print(all_data_dates_names)
-    all_data_dates_names, all_masked_data_dates = zip(*sorted(zip(all_data_dates_names,all_masked_data_dates)))
+    all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,filled_data)))
     print(all_data_dates_names)
     
     
-    filled_data = fu.temporal_fill_missing_values(all_masked_data_dates,selected_crops_array)
+    filled_data = fu.temporal_fill_missing_values(filled_data,selected_crops_array,filling_mode)
+    print(filled_data.shape)
+    del(landsat_masked_data)
+    del(sentinel_masked_data)
+    gc.collect()
+
 else:
     print("No Filling")
     all_data_dates_names = landsat_dataset_list + sentinel_dataset_list
-    all_masked_data_dates = landsat_raw_data + sentinel_raw_data
+    filled_data = landsat_raw_data + sentinel_raw_data
     print(all_data_dates_names)
-    all_data_dates_names, all_masked_data_dates = zip(*sorted(zip(all_data_dates_names,all_masked_data_dates)))
+    all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,filled_data)))
     print(all_data_dates_names)
-    filled_data = all_masked_data_dates
+
     
     
 end_train = time.time()
-print("Fill Data time: ", end_train - start_train)   
+print("Fill Data time: ", end_train - start_train)
+file.write("Fill Data time: " + str(end_train - start_train) + "\n")   
 
 start_train = time.time()    
-#Calculate Indeces NDVI, EVI
+#Calculate Indeces NDVI
 for date in filled_data:
     ndvi.append(fu.calculate_NDVI(date[0], date[1]))
-#     landsat_evi.append(fu.calculate_EVI(date[0], date[1], date[2]))
 
-# for date in sentinel_filled_data:
-#     sentinel_ndvi.append(fu.calculate_NDVI(date[0], date[1]))
-# #     sentinel_evi.append(fu.calculate_EVI(date[0], date[1], date[2]))
 end_train = time.time()
 print("Calculate NDVI time: ", end_train - start_train)
+file.write("Calculate NDVI time: " + str(end_train - start_train) + "\n\n")   
+
+del(filled_data)
+# del(ndvi)
+# del(data_array_ndvi)
+# del(landsat_masked_data)
+# del(sentinel_masked_data)
+# del(date)
+# del(temp)
+# del(all_masked_data_dates)
+gc.collect()
+# print("first garbage collection made")
 
 
-# In[7]:
-
-
-# for i,date in enumerate(filled_data):
-#     plt.figure(figsize=(50,20))
-#     plt.imshow(all_masked_data_dates[i][0])    
-#     plt.figure(figsize=(50,20))
-#     plt.imshow(date[0])
-
-# In[8]:
-
-    
-
-
+# del(data_array_combined_flatten)
+# del(crops_only_flatten)
+# gc.collect()
 
 
 #SAVE NDVI AND EVI RASTERS
-data_array_ndvi = np.squeeze(np.array(ndvi))
+ndvi = np.squeeze(np.array(ndvi))
 # data_array_evi = np.squeeze(np.array(evi))
-print(data_array_ndvi.shape)
+print(ndvi.shape)
 
 
 
-fu.array_to_raster(data_array_ndvi,crops_only_tif,data_folder_path + str(filling_mode) + "_ndvi_raster.tif")
+fu.array_to_raster(ndvi,crops_only_tif,data_folder_path + str(filling_mode) + "_ndvi_raster.tif")
 
 
 
 # array_to_raster(data_array_evi,crops_only_tif,data_folder_path + "evi_raster.tif")
-print(data_array_ndvi.shape)
+print(ndvi.shape)
+file.close()
 
+# #%%
+# for j in ndvi:
+#     plt.figure(figsize=(50,20))
+#     plt.imshow(j)
+# #%%
 
+"""
 
-# pixel_based_analysis = input("Conduct Pixel-Based Analisys? (y/n)? ")
-# if pixel_based_analysis=='n':
-#     sys.exit(0)
+pixel_based_analysis = input("Conduct Pixel-Based Analysis? (y/n)? ")
+if pixel_based_analysis=='n':
+    file.close()
+    sys.exit(0)
 
 
 
@@ -321,69 +361,90 @@ print(x,y)
 
 
 
- #%%
-total_elements = len(crops_only_flatten)
-background_elements = len(crops_only_flatten[crops_only_flatten!=0])
-resample_dict = {0: int(background_elements)}
-
-rus = NeighbourhoodCleaningRule(sampling_strategy='all')
-# rus = TomekLinks(sampling_strategy='all')
-# rus = RandomUnderSampler(sampling_strategy="not minority")
-# rus = OneSidedSelection(sampling_strategy='all',n_seeds_S=1000)
-
-print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
-print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
-print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
-print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
-print()
-start_train = time.time()
-X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
-end_train = time.time()
-print("Balancing time: ", end_train - start_train)
-print()
-print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
-print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
-print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
-print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
-print()
-
-
-
-
-
-# print(data_array_combined_flatten.shape)
-# print(crops_only_flatten.shape)
-
-# print(X_rus.shape)
-# print(y_rus.shape)
-
-X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
-# print(X_train.shape)
-# print(y_train.shape)
 #%%
-del(filled_data)
-del(ndvi)
-del(data_array_ndvi)
-del(landsat_masked_data)
-del(sentinel_masked_data)
-del(date)
-del(temp)
-del(all_masked_data_dates)
-gc.collect()
-print("first garbage collection made")
-#%%
-print("Train-Test splitting")
-# X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
 
-X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten,stratify=crops_only_flatten, test_size=0.20, random_state=42)
+under_sampling_analysis = input("Conduct UnderSampling Analysis? (yes/no)? ")
+if under_sampling_analysis=='y':
+    
+    balanced = "balanced"
+    file.write("UnderSampling: " + str(under_sampling_analysis) + "\n\n")
+    total_elements = len(crops_only_flatten)
+    background_elements = len(crops_only_flatten[crops_only_flatten!=0])
+    resample_dict = {0: int(background_elements)}
+    
+    rus = NeighbourhoodCleaningRule(sampling_strategy='all')
+    # rus = TomekLinks(sampling_strategy='all')
+    # rus = RandomUnderSampler(sampling_strategy="not minority")
+    # rus = OneSidedSelection(sampling_strategy='all',n_seeds_S=1000)
+    
+    # for i in unique_labels:
+    #     print("Before Class" + str(i) +  "number of samples: ", len(crops_only_flatten[crops_only_flatten==i]))
+    #     file.write("Before Class" + str(i) +  "number of samples: " + str(len(crops_only_flatten[crops_only_flatten==i])) + "\n")
+    
+    # print("Before Class 0 number of samples: ", len(crops_only_flatten[crops_only_flatten==0]))
+    # print("Before Class 1 number of samples: ", len(crops_only_flatten[crops_only_flatten==1]))
+    # print("Before Class 2 number of samples: ", len(crops_only_flatten[crops_only_flatten==2]))
+    # print("Before Class 10 number of samples: ", len(crops_only_flatten[crops_only_flatten==10]))
+    # print()
+    start_train = time.time()
+    X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
+    end_train = time.time()
+    print("Balancing time: ", end_train - start_train)
+    # print()
+    # print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
+    # print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
+    # print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
+    # print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
+    # print()
+    
+    file.write("Balancing time: " + str(end_train - start_train) + "\n\n")
+    
+    for i in unique_labels:
+        print("Before Class " + str(i) +  " number of samples: ", len(crops_only_flatten[crops_only_flatten==i]))
+        file.write("Before Class " + str(i) +  " number of samples: " + str(len(crops_only_flatten[crops_only_flatten==i])) + "\n")
+    file.write("\n")
+    for i in unique_labels:
+        print("After Class " + str(i) +  " number of samples: ", len(y_rus[y_rus==i]))
+        file.write("After Class " + str(i) +  " number of samples: " + str(len(y_rus[y_rus==i])) + "\n")
+    file.write("\n")
+    
+    
+    # print(data_array_combined_flatten.shape)
+    # print(crops_only_flatten.shape)
+    
+    # print(X_rus.shape)
+    # print(y_rus.shape)
+    
+    X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
+    # print(X_train.shape)
+    # print(y_train.shape)
+else: 
+    file.write("No UnderSampling \n\n")
+    balanced = ""
+    print("No UnderSampling Train-Test splitting")
+    # X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
+    
+    X_train, X_test, y_train, y_test = train_test_split(data_array_combined_flatten, crops_only_flatten,stratify=crops_only_flatten, test_size=0.20, random_state=42)
+    
+#%%
+# del(filled_data)
+# del(ndvi)
+# del(data_array_ndvi)
+# del(landsat_masked_data)
+# del(sentinel_masked_data)
+# del(date)
+# del(temp)
+# del(all_masked_data_dates)
+# gc.collect()
+# print("first garbage collection made")
+
 
 # del(data_array_combined_flatten)
 # del(crops_only_flatten)
 # gc.collect()
 
-
+#%%
 print("MLP Running")
-# %%
 #SPAT
 #200/100/50 loss=0.07352, 0.9649,0.9767, f1 > 0.88219, b=400 1:30 hours approximately
 #200/100/50 loss=0.08871, 0.9645,0.9704, f1 > 0.87899, b=5000 33.5 minutes
@@ -398,12 +459,15 @@ start_train = time.time()
 mlp_clf.fit(X_train,y_train)
 end_train = time.time()
 print("MLP train time: ", end_train - start_train)
+file.write("MLP train time: " + str(end_train - start_train) + "\n")
 
 start_test = time.time()
 y_pred = mlp_clf.predict(X_test)
 end_test = time.time()
 print("MLP test time: ", end_test - start_test)
 
+file.write("MLP test time: " + str(end_test - start_test) + "\n")
+file.write("MLP Final loss: " + str(mlp_clf.loss_) + "\n")
 print(mlp_clf.loss_)
 
 
@@ -415,15 +479,23 @@ print("Train_accuracy test time: ", end_test - start_test)
 
 cm = confusion_matrix(y_pred, y_test)
 train_cm = confusion_matrix(y_train_pred, y_train)
-print("Test Accuracy of MLPClassifier : ", fu.accuracy(cm))
-print("Train Accuracy of MLPClassifier : ", fu.accuracy(train_cm))
+print("MLP Classifier Test Accuracy: ", fu.accuracy(cm))
+print("MLP Classifier Train Accuracy: ", fu.accuracy(train_cm))
+file.write("MLP Classifier Test Accuracy: " + str(fu.accuracy(cm)) + "\n")
+file.write("MLP Classifier Train Accuracy: " + str(fu.accuracy(train_cm)) + "\n")
 
 
-stat_res = precision_recall_fscore_support(y_test, y_pred,labels=np.unique(selected_crops_array))
+stat_res = precision_recall_fscore_support(y_test, y_pred,labels=unique_labels)
 print(stat_res)
-fu.print_confusion_matrix(cm,np.unique(selected_crops_array))
+file.write("MLP Precision, Recall, F1 score \n\n")
+for i,met in enumerate(metrics_list):
+    file.write(met + "\n")
+    file.write(str(stat_res[i]) + "\n")
 
-plt.savefig('MLP_Conf_Matrix_PBIA_temp_balanced.png')
+fu.print_confusion_matrix(cm,np.unique(selected_crops_array))
+file.write("\n")
+
+plt.savefig(plots_folder_path + "MLP_Conf_Matrix_PBIA_" + filling_mode + "_" + balanced + ".png")
 # In[24]:
 #TEMP
 # 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
@@ -434,11 +506,13 @@ start_train = time.time()
 rf.fit(X_train, y_train)
 end_train = time.time()
 print("RF train time: ",end_train - start_train)
+file.write("RF train time: " + str(end_train - start_train) + "\n")
 
 start_test = time.time()
 rf_y_pred = rf.predict(X_test)
 end_test = time.time()
 print("RF test time: ", end_test - start_test)
+file.write("RF test time: " + str(end_test - start_test) + "\n")
 
 start_test = time.time()
 rf_y_pred_train = rf.predict(X_train)
@@ -447,30 +521,43 @@ end_test = time.time()
 
 rf_cm = confusion_matrix(rf_y_pred, y_test)
 rf_cm_train = confusion_matrix(rf_y_pred_train, y_train)
-rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=np.unique(selected_crops_array))
+rf_stat_res = precision_recall_fscore_support(y_test, rf_y_pred,labels=unique_labels)
 
 
-print("Test Accuracy of RF Classifier : ", fu.accuracy(rf_cm))
-print("Train Accuracy of RF Classifier : ", fu.accuracy(rf_cm_train))
+print("RF Classifier Test Accuracy: ", fu.accuracy(rf_cm))
+print("RF Classifier Train Accuracy: ", fu.accuracy(rf_cm_train))
+file.write("RF Classifier Test Accuracy: " + str(fu.accuracy(rf_cm)) + "\n")
+file.write("RF Classifier Train Accuracy: " + str(fu.accuracy(rf_cm_train)) + "\n")
 print(rf_stat_res)
 
-fu.print_confusion_matrix(rf_cm,np.unique(selected_crops_array))
-plt.savefig('Random_Forest_Conf_Matrix_PBIA_temp.png')
+file.write("\nRF Precision, Recall, F1 score \n\n")
+
+for i,met in enumerate(metrics_list):
+    file.write(met + "\n")
+    file.write(str(rf_stat_res[i]) + "\n")
+
+fu.print_confusion_matrix(rf_cm,unique_labels)
+
+plt.savefig(plots_folder_path+ "RF_Conf_Matrix_PBIA_" + filling_mode + "_" + balanced + ".png")
 
 opt = np.get_printoptions()
 np.set_printoptions(threshold=np.inf)
 importance = rf.feature_importances_
 print((importance))
 np.set_printoptions(**opt)
+file.write("RF importances: " + str(importance))
 
+file.close()
 # In[37]:
 
-
-# print(clf.classes_)
-# print(clf.n_classes_)
-# print(clf.n_outputs_)
-# print(clf.n_features_)
-# print(clf.feature_importances_)
+# disp = plot_confusion_matrix(rf,X_test,y_test,display_labels=unique_labels,cmap=plt.cm.jet,normalize='true')
+# print(disp.confusion_matrix)
+# plt.show()
+# print(rf.classes_)
+# print(rf.n_classes_)
+# print(rf.n_outputs_)
+# print(rf.n_features_)
+# print(rf.feature_importances_)
 # print((np.unique(crops_only)))
 # print()
 
@@ -478,11 +565,11 @@ np.set_printoptions(**opt)
 # In[39]:
 
 
-# temp = [estimator.tree_.max_depth for estimator in clf.estimators_]
+# temp = [estimator.tree_.max_depth for estimator in rf.estimators_]
 # print(len(temp))
 # print(np.mean(np.array(temp)))
 # print(np.amax(np.array(temp)))
 # print(np.amin(np.array(temp)))
 
 
-
+"""

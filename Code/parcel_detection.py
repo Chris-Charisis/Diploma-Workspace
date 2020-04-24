@@ -7,7 +7,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import gdal
+from osgeo import gdal
 import csv
 import sys
 import os
@@ -21,14 +21,23 @@ os.chdir(pathlib.Path(__file__).parent.absolute())
 import functions as fu
 
 
-year = '_2018/'
-#year = '_2019/'
-data_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Data' + year
-labels_folder_path = '/home/chris/Desktop/diploma/Diploma-Workspace/Ground_Truth_Data' + year
-shapefile_folder = 'Shapefiles/'
-crop_masks_folder = 'Crop_Masks/'
+workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
+print(workspace_path)
 
-cropped_data ='cropped_data/'
+#locally
+# year = '_2019/'
+year = '_2018/'
+area = '' 
+
+#on server
+# year = '/'
+# area = '/area_2'
+
+data_folder_path = workspace_path + area + '/Data' + year
+labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
+
+shapefile_folder = '/Shapefiles/'
+crop_masks_folder = '/Crop_Masks/'
 
 
 #IMPORT LABELS
@@ -41,30 +50,29 @@ mask_suffix = '_mask.tif'
 
 
 #Read as TIF
-# crop_data_tif = gdal.Open(labels_folder_path + 'CDL.tif')
-#crop_mask_tif = gdal.Open(labels_folder_path + 'CMASK.tif')
 crops_only_tif = gdal.Open(labels_folder_path + 'CDL_CROPS_ONLY.tif')
+crops_only = np.array(crops_only_tif.GetRasterBand(1).ReadAsArray()) #crops_only_tif.read(1).astype('float32')
 
-cotton_tif = gdal.Open(labels_folder_path + crop_name[0] + mask_suffix)
-#fallow_2_tif = gdal.Open(labels_folder_path + 'CDL_FALLOW_2.tif')
-peanuts_tif = gdal.Open(labels_folder_path + crop_name[2] + mask_suffix)
-#other_hay_4_tif = gdal.Open(labels_folder_path + 'CDL_OTHER_HAY_NO_ALFALA_4.tif')
-corn_tif = gdal.Open(labels_folder_path + crop_name[1] + mask_suffix)
+crops_tifs = []
+crops_arrays_list = []
+for name in crop_name:
+    crops_tifs.append(gdal.Open(labels_folder_path + name + mask_suffix))
+    crops_arrays_list.append(np.array(crops_tifs[-1].GetRasterBand(1).ReadAsArray()))
+    
+# cotton_tif = gdal.Open(labels_folder_path + crop_name[0] + mask_suffix)
+# peanuts_tif = gdal.Open(labels_folder_path + crop_name[2] + mask_suffix)
+# corn_tif = gdal.Open(labels_folder_path + crop_name[1] + mask_suffix)
 
-crops_tifs = [cotton_tif, corn_tif, peanuts_tif]
+# crops_tifs = [cotton_tif, corn_tif, peanuts_tif]
 
 #Read as Arrays
-# crop_data = np.array(crop_data_tif.GetRasterBand(1).ReadAsArray())# crop_data_tif.read(1).astype('float64')
-# crop_mask = np.array(crop_mask_tif.GetRasterBand(1).ReadAsArray()) #crop_mask_tif.read(1).astype('float64')
-crops_only = np.array(crops_only_tif.GetRasterBand(1).ReadAsArray()) #crops_only_tif.read(1).astype('float64')
 
-cotton_array = np.array(cotton_tif.GetRasterBand(1).ReadAsArray()) #cotton_1_tif.read(1).astype('float64')
-#fallow_2 = np.array(fallow_2_tif.GetRasterBand(1).ReadAsArray()) #fallow_2_tif.read(1).astype('float64')
-peanuts_array = np.array(peanuts_tif.GetRasterBand(1).ReadAsArray()) #peanuts_3_tif.read(1).astype('float64')
-#other_hay_4 = np.array(other_hay_4_tif.GetRasterBand(1).ReadAsArray()) #other_hay_4_tif.read(1).astype('float64')
-corn_array = np.array(corn_tif.GetRasterBand(1).ReadAsArray()) #corn_5_tif.read(1).astype('float64')
 
-crops_arrays_list = [cotton_array, corn_array, peanuts_array]
+# cotton_array = np.array(cotton_tif.GetRasterBand(1).ReadAsArray()) #cotton_1_tif.read(1).astype('float32')
+# peanuts_array = np.array(peanuts_tif.GetRasterBand(1).ReadAsArray()) #peanuts_3_tif.read(1).astype('float32')
+# corn_array = np.array(corn_tif.GetRasterBand(1).ReadAsArray()) #corn_5_tif.read(1).astype('float32')
+
+# crops_arrays_list = [cotton_array, corn_array, peanuts_array]
 
 #read csv with crops type
 labels = pd.read_csv(labels_folder_path + 'CDL_data.tif.vat.csv')
@@ -99,7 +107,7 @@ if threshold=='':
 threshold = int(threshold)
 for testing in crops_arrays_list:
     opened_image_1 = skimage.morphology.area_opening(testing,connectivity=1,area_threshold=threshold)
-    opened_image_2 = skimage.morphology.area_opening(testing,connectivity=2,area_threshold=threshold)
+    # opened_image_2 = skimage.morphology.area_opening(testing,connectivity=2,area_threshold=threshold)
 
     #binary_opened_image = skimage.morphology.binary_opening(mask)
 
@@ -108,17 +116,22 @@ for testing in crops_arrays_list:
 
     #opening_followed_by_closing = skimage.morphology.area_closing(opened_image,connectivity=2,area_threshold=256)
     parcel_list_1.append(skimage.morphology.area_closing(opened_image_1,connectivity=1,area_threshold=threshold))
-    parcel_list_2.append(skimage.morphology.area_closing(opened_image_2,connectivity=2,area_threshold=threshold))
+    # parcel_list_2.append(skimage.morphology.area_closing(opened_image_2,connectivity=2,area_threshold=threshold))
 
     
 #summed_map = parcel_list[0] + parcel_list[1] + parcel_list[2]    
 # plt.figure(figsize=(50,20))
 # plot.show(summed_map)
 for idx,crop in enumerate(parcel_list_1):
-    plt.figure(figsize=(50,20))
-    plt.imshow(crops_arrays_list[idx])
-    plt.figure(figsize=(50,20))
-    plt.imshow(crop)
+
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(crops_arrays_list[idx])
+    plt.savefig(workspace_path +'/Plots/' + crop_name[idx]  + "_before_process_" + ".png")
+
+    # plt.figure(figsize=(50,20))
+    # plt.imshow(crop)
+    plt.savefig(workspace_path +'/Plots/' + crop_name[idx] + "_after_process_" + "_" + str(threshold) + "_.png")
+
     # plt.figure(figsize=(50,20))
     # plt.imshow(parcel_list_2[idx])
     plt.show()
