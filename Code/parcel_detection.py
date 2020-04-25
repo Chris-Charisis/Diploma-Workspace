@@ -11,13 +11,13 @@ from osgeo import gdal
 import csv
 import sys
 import os
-
+import skimage.morphology
 #custom files import
 
-import skimage.morphology
+
 
 import pathlib
-os.chdir(pathlib.Path(__file__).parent.absolute())
+os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 import functions as fu
 
 
@@ -26,15 +26,18 @@ print(workspace_path)
 
 #locally
 # year = '_2019/'
-year = '_2018/'
-area = '' 
+# year = '_2018/'
+# area = ''
 
 #on server
-# year = '/'
-# area = '/area_2'
+area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+
+year = '/'
+area = '/area_' + area_used
 
 data_folder_path = workspace_path + area + '/Data' + year
 labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
+plots_folder_path = workspace_path + area + '/Plots' + year
 
 shapefile_folder = '/Shapefiles/'
 crop_masks_folder = '/Crop_Masks/'
@@ -124,17 +127,17 @@ for testing in crops_arrays_list:
 # plot.show(summed_map)
 for idx,crop in enumerate(parcel_list_1):
 
-    # plt.figure(figsize=(50,20))
+    plt.figure(figsize=(50,20))
     # plt.imshow(crops_arrays_list[idx])
-    plt.savefig(workspace_path +'/Plots/' + crop_name[idx]  + "_before_process_" + ".png")
+    plt.savefig(plots_folder_path + crop_name[idx]  + "_before_process_" + ".png")
 
-    # plt.figure(figsize=(50,20))
+    plt.figure(figsize=(50,20))
     # plt.imshow(crop)
-    plt.savefig(workspace_path +'/Plots/' + crop_name[idx] + "_after_process_" + "_" + str(threshold) + "_.png")
+    plt.savefig(plots_folder_path + crop_name[idx] + "_after_process_" + "_" + str(threshold) + "_.png")
 
     # plt.figure(figsize=(50,20))
     # plt.imshow(parcel_list_2[idx])
-    plt.show()
+    # plt.show()
 
 
 

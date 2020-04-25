@@ -13,14 +13,11 @@ from osgeo import gdal
 import csv
 import time
 
-
-
-
 from math import sqrt
 
 import rasterstats as rs
 import pathlib
-os.chdir(pathlib.Path(__file__).parent.absolute())
+os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 import functions as fu
 
 
@@ -42,15 +39,17 @@ print(workspace_path)
 
 
 # year = '_2019/'
-year = '_2018/'
-area = '' 
+# year = '_2018/'
+# area = ''
 
-# year = '/'
-# area = '/area_2'
+area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+
+year = '/'
+area = '/area_' + area_used
 
 data_folder_path = workspace_path + area + '/Data' + year
 labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
-
+plots_folder_path = workspace_path + area + '/Plots' + year
 
 
 
@@ -65,6 +64,12 @@ csv_path = data_folder_path + 'CSVs/'
 indeces = ["ndvi"]
 # In[3]:
 
+txt_name = str(input('Name of the file to write results: '))
+file = open(txt_name,"w")
+file.write(area[1:] + "\n\n")
+
+mode_to_process = str(input('Mode to process: (spat/temp/mixed/none): '))
+
 
 shapefiles_name_list = os.listdir(data_folder_path + 'Shapefiles/')
 shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.endswith('.shp')])
@@ -78,7 +83,7 @@ print("Threshold shapelifes detected: ")
 for i in new_list:
     print(i)
 threshold = input("Enter threshold of number of pixels per parcel for processing: ")
-
+file.write("Threshold used for parcel detection: " +  + "\n\n")
 shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.startswith(threshold)])
 
 
@@ -199,34 +204,43 @@ train_test_ratio = 0.2
 clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (y/n): ')
 
 if clean_dataset == 'y':
-    
-    total_elements = len(labels)
-    background_elements = len(labels[labels!=0])
+    balanced = "balanced"
+    file.write("UnderSampling: " + str(under_sampling_analysis) + "\n\n")
+    total_elements = len(crops_only_flatten)
+    background_elements = len(crops_only_flatten[crops_only_flatten != 0])
     resample_dict = {0: int(background_elements)}
-    
+
     rus = NeighbourhoodCleaningRule(sampling_strategy='all')
     # rus = TomekLinks(sampling_strategy='all')
     # rus = RandomUnderSampler(sampling_strategy="not minority")
     # rus = OneSidedSelection(sampling_strategy='all',n_seeds_S=1000)
-    
-    print("Before Class 0 number of samples: ", len(labels[labels==0]))
-    print("Before Class 1 number of samples: ", len(labels[labels==1]))
-    print("Before Class 2 number of samples: ", len(labels[labels==2]))
-    print("Before Class 10 number of samples: ", len(labels[labels==10]))
-    print()
+
     start_train = time.time()
-    X_rus, y_rus = rus.fit_sample(data, labels)
+    X_rus, y_rus = rus.fit_sample(data_array_combined_flatten, crops_only_flatten)
     end_train = time.time()
     print("Balancing time: ", end_train - start_train)
-    print()
-    print("After Class 0 number of samples: ", len(y_rus[y_rus==0]))
-    print("After Class 1 number of samples: ", len(y_rus[y_rus==1]))
-    print("After Class 2 number of samples: ", len(y_rus[y_rus==2]))
-    print("After Class 10 number of samples: ", len(y_rus[y_rus==10]))
-    print()
-    
-        
-    X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(X_rus, y_rus, test_size=train_test_ratio, random_state=42,stratify=y_rus)
+
+    file.write("Balancing time: " + str(end_train - start_train) + "\n\n")
+
+    for i in unique_labels:
+        print("Before Class " + str(i) + " number of samples: ", len(crops_only_flatten[crops_only_flatten == i]))
+        file.write("Before Class " + str(i) + " number of samples: " + str(
+            len(crops_only_flatten[crops_only_flatten == i])) + "\n")
+    file.write("\n")
+    for i in unique_labels:
+        print("After Class " + str(i) + " number of samples: ", len(y_rus[y_rus == i]))
+        file.write("After Class " + str(i) + " number of samples: " + str(len(y_rus[y_rus == i])) + "\n")
+    file.write("\n")
+
+    # print(data_array_combined_flatten.shape)
+    # print(crops_only_flatten.shape)
+
+    # print(X_rus.shape)
+    # print(y_rus.shape)
+
+    X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus, stratify=y_rus, test_size=0.20, random_state=42)
+    # print(X_train.shape)
+    # print(y_train.shape)
 
 else:
 
@@ -245,9 +259,6 @@ print("MLP test time: ", end_test - start_test)
 
 
 print(mlp.loss_)
-
-
-
 
 
 start_test = time.time()

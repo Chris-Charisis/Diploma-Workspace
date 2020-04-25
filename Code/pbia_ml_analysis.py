@@ -29,13 +29,14 @@ workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).pare
 print(workspace_path)
 
 # year = '_2019/'
-year = '_2018/'
-area = ''
+# year = '_2018/'
+# area = ''
 
-# area_used = str(input('Give the number of the area to process (2,3,7,8): '))
 
-# year = '/'
-# area = '/area_' + area_used
+area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+
+year = '/'
+area = '/area_' + area_used
 
 data_folder_path = workspace_path + area + '/Data' + year
 labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
@@ -45,7 +46,7 @@ print(data_folder_path)
 print(labels_folder_path)
 print(plots_folder_path)
 
-metrics_list = ["Precision", "Recall","F1 Score"]
+metrics_list = ["Precision", "Recall", "F1 Score"]
 
 #%%
 
@@ -53,7 +54,7 @@ txt_name = str(input('Name of the file to write results: '))
 file = open(txt_name,"w")
 file.write(area[1:] + "\n\n")
 
-mode_to_process = str(input('Mode to process: (spat/temp/none): '))
+mode_to_process = str(input('Mode to process: (spat/temp/mixed/none): '))
 
 
 # crops_only_tif = gdal.Open(labels_folder_path + 'CDL_CROPS_ONLY.tif')
@@ -177,7 +178,7 @@ else:
 # del(data_array_combined_flatten)
 # del(crops_only_flatten)
 # gc.collect()
-
+"""
 #%%
 print("MLP Running")
 #SPAT
@@ -189,7 +190,7 @@ print("MLP Running")
 #TEMP
 #200/100/50 loss=0.09302, 0.9501,0.9676, f1 > 0.80629 , b=400 2:20 hours approximately
 #200/100/50 loss=0.02112, 0.9864,0.9931, f1 > 0.94223
-mlp_clf = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=400)
+mlp_clf = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=10000)
 start_train = time.time()
 mlp_clf.fit(X_train,y_train)
 end_train = time.time()
@@ -235,7 +236,7 @@ plt.savefig(plots_folder_path + "MLP_Conf_Matrix_PBIA_" + mode_to_process + "_" 
 #TEMP
 # 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
 # 0.95323,0.99918, f1 > 0.823428, 14 mins 'entropy' n=100
-
+"""
 rf = RandomForestClassifier(random_state=0,n_estimators=100,n_jobs=-1)#,criterion='entropy')
 start_train = time.time()
 rf.fit(X_train, y_train)
