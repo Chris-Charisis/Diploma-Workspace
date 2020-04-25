@@ -8,8 +8,6 @@ import os
 import time
 import matplotlib.pyplot as plt
 
-
-
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 
@@ -18,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
+from imblearn.under_sampling import NeighbourhoodCleaningRule  # , RandomUnderSampler, OneSidedSelection, TomekLinks
 
 os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 
@@ -40,16 +38,14 @@ csv_path = data_folder_path + 'CSVs/'
 metrics_list = ["Precision", "Recall", "F1 Score"]
 indeces = ["ndvi"]
 
-txt_name = str(input('Name of the file to write results: '))
-file = open(txt_name,"w")
-file.write(area[1:] + "\n\n")
 
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
     data = dict(reader)
 
 crop_names_list = list(data.keys())
-labels_nums = [ int(x) for x in list(data.values()) ]
+labels_nums = [int(x) for x in list(data.values())]
+labels_nums.sort()
 print(labels_nums)
 print(crop_names_list)
 
@@ -66,6 +62,17 @@ print("Raster files detected: ")
 for i in new_list:
     print(i)
 filling_mode = input("Enter filling mode for processing: ")
+
+clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (yes/no): ')
+if clean_dataset == 'yes':
+    cleaned = "_cleaned"
+else:
+    cleaned=""
+
+
+txt_name = "obia_" + area_used + "_results_" + filling_mode + cleaned
+file = open(txt_name, "w")
+file.write(area[1:] + "\n\n")
 
 no_bands = len(os.listdir(data_folder_path + 'Separate_Bands/'))
 
@@ -93,10 +100,6 @@ for i in range(1, len(index_labels)):
     data = np.concatenate((data, index_means[i]), axis=0)
     labels = np.concatenate((labels, index_labels[i]), axis=0)
 
-# print(len(dict_of_indeces_with_data_and_labels_in_list['ndvi'][1]))
-
-
-# print(len(dict_of_indeces_with_data_and_labels_in_list['ndvi'][1]))
 
 print(data.shape)
 print(labels.shape)
@@ -104,10 +107,8 @@ print(labels.shape)
 # CREATE TRAIN TEST DATASETS FOR ML CLASSIFIERS
 train_test_ratio = 0.2
 
-clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (yes/no): ')
 
 if clean_dataset == 'yes':
-    balanced = "balanced"
     file.write("UnderSampling: " + str(clean_dataset) + "\n\n")
     total_elements = len(labels)
     background_elements = len(labels[labels != 0])
@@ -135,20 +136,11 @@ if clean_dataset == 'yes':
         file.write("After Class " + str(i) + " number of samples: " + str(len(y_rus[y_rus == i])) + "\n")
     file.write("\n")
 
-    # print(data_array_combined_flatten.shape)
-    # print(crops_only_flatten.shape)
-
-    # print(X_rus.shape)
-    # print(y_rus.shape)
-
     X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(X_rus, y_rus, test_size=train_test_ratio,
                                                                     random_state=42, stratify=y_rus)
-    # print(X_train_ml.shape)
-    # print(y_train_ml.shape)
 
 else:
     file.write("No UnderSampling \n\n")
-    balanced = ""
     print("No UnderSampling Train-Test splitting")
     X_train_ml, X_test_ml, y_train_ml, y_test_ml = train_test_split(data, labels, test_size=train_test_ratio,
                                                                     random_state=42, stratify=labels)
@@ -317,80 +309,47 @@ for i, met in enumerate(metrics_list):
 print("RMSE")
 file.write("\n\nRMSE \n\n")
 
-X_test = []
-y_test = []
-
-train_test_ratio = 0.2
-
 means = []
-for i in range(len(index_labels)):
-    train_x, test_x, train_y, test_y = train_test_split(index_means[i], index_labels[i], test_size=train_test_ratio,
-                                                        random_state=42)
-
-    means.append(np.mean(train_x, axis=0))
-
-    X_test.append(test_x)
-    y_test.append(test_y)
-
-# print(means[0].shape)
-# print(X_test[0].shape)
-# print(means[1].shape)
-# print(X_test[1].shape)
-# print(means[2].shape)
-# print(X_test[2].shape)
-
+for label in labels_nums:
+    means.append(np.mean(X_train_ml[y_train_ml == label], axis=0))
 
 for line in range(len(means)):
     plt.plot(means[line])
 plt.legend(crop_names_list)
-plt.savefig(plots_folder_path + 'Lines_' + filling_mode + '.png')
+plt.savefig(plots_folder_path + 'Lines_' + filling_mode + cleaned + '.png')
 
-test_data = np.copy(X_test[0])
-test_labels = np.copy(y_test[0])
-for i in range(1, len(y_test)):
-    test_data = np.concatenate((test_data, X_test[i]), axis=0)
-    test_labels = np.concatenate((test_labels, y_test[i]), axis=0)
-
-# test_data = np.concatenate([X_test[0],X_test[1],X_test[2]])
-# test_labels = np.concatenate([y_test[0],y_test[1],y_test[2]])
-
-print(test_data.shape)
-print(test_labels.shape)
-
-results = []
-for vec in test_data:
+results_rmse = []
+results_mae = []
+for vec in X_test_ml:
     rmse = []
+    mae = []
     for crop_graph in means:
-        # rmse.append((mean_absolute_error(crop_graph, vec)))
+        mae.append((mean_absolute_error(crop_graph, vec)))
         rmse.append((mean_squared_error(crop_graph, vec)))
-    results.append(labels_nums[rmse.index(min(rmse))])
+    results_rmse.append(labels_nums[rmse.index(min(rmse))])
+    results_mae.append(labels_nums[mae.index(min(mae))])
 
-cm = confusion_matrix(test_labels, results)
-stat_res = precision_recall_fscore_support(test_labels, results, labels=labels_nums)
-print(stat_res)
-# fu.print_confusion_matrix(cm,labels_nums)
-print("Test Accuracy of RMSE Classifier : ", fu.accuracy(cm))
-file.write("RMSE Classifier Test Accuracy: " + str(fu.accuracy(cm)) + "\n")
+
+cm_rmse = confusion_matrix(y_test_ml, results_rmse)
+stat_res_rmse = precision_recall_fscore_support(y_test_ml, results_rmse, labels=labels_nums)
+print(stat_res_rmse)
+# fu.print_confusion_matrix(cm_rmse,labels_nums)
+print("Test Accuracy of RMSE Classifier : ", fu.accuracy(cm_rmse))
+file.write("RMSE Classifier Test Accuracy: " + str(fu.accuracy(cm_rmse)) + "\n")
 file.write("RMSE Precision, Recall, F1 score \n\n")
 for i, met in enumerate(metrics_list):
     file.write(met + "\n")
-    file.write(str(stat_res[i]) + "\n")
+    file.write(str(stat_res_rmse[i]) + "\n")
+
+cm_mae = confusion_matrix(y_test_ml, results_mae)
+stat_res_mae = precision_recall_fscore_support(y_test_ml, results_mae, labels=labels_nums)
+print(stat_res_mae)
+# fu.print_confusion_matrix(cm_mae,labels_nums)
+print("Test Accuracy of MAE Classifier : ", fu.accuracy(cm_mae))
+file.write("MAE Classifier Test Accuracy: " + str(fu.accuracy(cm_mae)) + "\n")
+file.write("MAE Precision, Recall, F1 score \n\n")
+for i, met in enumerate(metrics_list):
+    file.write(met + "\n")
+    file.write(str(stat_res_mae[i]) + "\n")
+
 file.close()
-# In[33]:
-
-
-# conf = confusion_matrix(test_labels, results)
-# stat_res = precision_recall_fscore_support(test_labels, results,labels=labels_nums, average='macro')
-# print(stat_res)
-#
-#
-#
-# # In[37]:
-#
-#
-# stat_res = precision_recall_fscore_support(test_labels, results,labels=labels_nums)
-# print(stat_res)
-# fu.print_confusion_matrix(conf,crop_names_list)
-
-
-

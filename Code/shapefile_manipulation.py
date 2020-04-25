@@ -13,8 +13,6 @@ import pathlib
 os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 import functions as fu
 
-
-
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
 # In[10]:
@@ -34,7 +32,6 @@ labels_folder_path = workspace_path + area + '/Ground_Truth_Data' + year
 plots_folder_path = workspace_path + area + '/Plots' + year
 
 
-
 shapefiles_folder_path = data_folder_path + 'Shapefiles/'
 separate_bands_folder_path = 'Separate_Bands/'
 csv_path = data_folder_path + 'CSVs/'
@@ -44,7 +41,7 @@ indeces = ["ndvi"]
 # In[3]:
 
 txt_name = str(input('Name of the file to write results: '))
-file = open(txt_name,"w")
+file = open(txt_name, "w")
 file.write(area[1:] + "\n\n")
 
 
