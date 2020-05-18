@@ -7,6 +7,7 @@ import csv
 import os
 import time
 import matplotlib.pyplot as plt
+import collections
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
@@ -23,7 +24,7 @@ os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
 
-area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+area_used = str(input('Give the number of the area to process (2,2_reduced,3,7,8): '))
 
 year = '/'
 area = '/area_' + area_used
@@ -41,11 +42,10 @@ indeces = ["ndvi"]
 
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
-    data = dict(reader)
+    data = collections.OrderedDict(reader)
 
 crop_names_list = list(data.keys())
 labels_nums = [int(x) for x in list(data.values())]
-labels_nums.sort()
 print(labels_nums)
 print(crop_names_list)
 
@@ -61,18 +61,33 @@ new_list = list(set(new_list))
 print("Raster files detected: ")
 for i in new_list:
     print(i)
-filling_mode = input("Enter filling mode for processing: ")
+filling_mode = input("Enter filling mode for processing: (spat/temp/none)")
 
 clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (yes/no): ')
 if clean_dataset == 'yes':
     cleaned = "_cleaned"
 else:
-    cleaned=""
+    cleaned = ""
 
 
 txt_name = "obia_" + area_used + "_results_" + filling_mode + cleaned
 file = open(txt_name, "w")
 file.write(area[1:] + "\n\n")
+
+shapefiles_name_list = os.listdir(data_folder_path + 'Shapefiles/')
+shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.endswith('.shp')])
+
+new_list = []
+for file_name in shapefiles_name_list:
+    new_list.append(file_name.split('_')[0])
+
+new_list = list(set(new_list))
+print("Threshold shapelifes detected: ")
+for i in new_list:
+    print(i)
+threshold = input("Enter threshold of number of pixels per parcel for processing: ")
+file.write("Threshold used for parcel detection: " + str(threshold) + "\n\n")
+
 
 no_bands = len(os.listdir(data_folder_path + 'Separate_Bands/'))
 
@@ -84,7 +99,7 @@ index_labels = []
 for j, crop in enumerate(crop_names_list):
     date_array = []
     for i in range(no_bands):
-        stats = pd.read_csv(data_folder_path + 'CSVs/' + crop + '_date_' + str(i + 1) + str('_' + index) + '_stats.csv')
+        stats = pd.read_csv(data_folder_path + 'CSVs/' + crop + '_date_' + str(i + 1) + str('_' + threshold) + str('_' + filling_mode) + '_stats.csv')
         date_array.append(stats.values)
     #    crop_arrays.append(np.asarray(date_array))
     temp = np.squeeze(np.asarray(date_array))  # mean
@@ -316,7 +331,7 @@ for label in labels_nums:
 for line in range(len(means)):
     plt.plot(means[line])
 plt.legend(crop_names_list)
-plt.savefig(plots_folder_path + 'Lines_' + filling_mode + cleaned + '.png')
+plt.savefig(plots_folder_path + 'Lines_area_' + str(area_used) + '_' + filling_mode + cleaned + '.png')
 
 results_rmse = []
 results_mae = []

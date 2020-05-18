@@ -6,7 +6,7 @@
 import os
 from osgeo import gdal
 import csv
-
+import collections
 
 import rasterstats as rs
 import pathlib
@@ -22,7 +22,7 @@ print(workspace_path)
 # year = '_2018/'
 # area = ''
 
-area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+area_used = str(input('Give the number of the area to process (2,2_reduced,3,7,8): '))
 
 year = '/'
 area = '/area_' + area_used
@@ -63,7 +63,7 @@ shapefiles_name_list = sorted([file for file in shapefiles_name_list if file.sta
 
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
-    data = dict(reader)
+    data = collections.OrderedDict(reader)
 
 crop_names_list = list(data.keys())
 labels_nums = [ int(x) for x in list(data.values()) ]
@@ -128,7 +128,7 @@ for index in indeces:
         for i in range(len(stats_dicts_for_each_crop_and_date[idx])):
             toCSV = stats_dicts_for_each_crop_and_date[idx][i]
             keys = toCSV[0].keys()
-            with open(csv_path + crop_names_list[idx] + '_date_' + str(i+1) + str('_' + index) + '_stats.csv', 'w') as output_file:
+            with open(csv_path + crop_names_list[idx] + '_date_' + str(i+1) + str('_' + threshold) + str('_' + filling_mode) + '_stats.csv', 'w') as output_file:
                 dict_writer = csv.DictWriter(output_file, keys)
                 dict_writer.writeheader()
                 dict_writer.writerows(toCSV)

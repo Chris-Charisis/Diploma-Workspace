@@ -13,7 +13,7 @@ import sys
 import os
 import skimage.morphology
 #custom files import
-
+import collections
 
 
 import pathlib
@@ -30,7 +30,7 @@ print(workspace_path)
 # area = ''
 
 #on server
-area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+area_used = str(input('Give the number of the area to process (2,2_reduced,3,7,8): '))
 
 year = '/'
 area = '/area_' + area_used
@@ -46,7 +46,7 @@ crop_masks_folder = '/Crop_Masks/'
 #IMPORT LABELS
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
-    data = dict(reader)
+    data = collections.OrderedDict(reader)
 
 crop_name = list(data.keys())
 mask_suffix = '_mask.tif'
@@ -104,9 +104,9 @@ crop_existing_labels = labels[labels['VALUE'].isin(idx2)]
 parcel_list_1 = []
 parcel_list_2 = []
 
-threshold = (input("Enter threshold of number of pixels per parcel. (double press enter for default=200): "))
+threshold = (input("Enter threshold of number of pixels per parcel. (double press enter for default=500): "))
 if threshold=='':
-    threshold = 200    
+    threshold = 500
 threshold = int(threshold)
 for testing in crops_arrays_list:
     opened_image_1 = skimage.morphology.area_opening(testing,connectivity=1,area_threshold=threshold)
@@ -128,11 +128,11 @@ for testing in crops_arrays_list:
 for idx,crop in enumerate(parcel_list_1):
 
     plt.figure(figsize=(50,20))
-    # plt.imshow(crops_arrays_list[idx])
+    plt.imshow(crops_arrays_list[idx])
     plt.savefig(plots_folder_path + crop_name[idx]  + "_before_process_" + ".png")
 
     plt.figure(figsize=(50,20))
-    # plt.imshow(crop)
+    plt.imshow(crop)
     plt.savefig(plots_folder_path + crop_name[idx] + "_after_process_" + "_" + str(threshold) + "_.png")
 
     # plt.figure(figsize=(50,20))

@@ -33,7 +33,7 @@ print(workspace_path)
 # year = '_2018/'
 # area = ''
 
-area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+area_used = str(input('Give the number of the area to process (2,2_reduced,3,7,8): '))
 
 
 year = '/'
@@ -102,8 +102,10 @@ ex = existing_labels.loc[existing_labels['Value']<100]
 test = ex.nlargest(10,'Count')
 print('Crops with largest acreage')
 print(test)
-selected_crops = input('Select crops(names as you see them in Category,seperated with 1 space): ')
-temp1 = ex.loc[ex['Category'].isin(selected_crops.split())]
+selected_crops = input('Select crops(names as you see them in Category,seperated with 1 space, 2 word crop write _ instead of space): ')
+selected_crops = [x.replace('_', ' ') for x in selected_crops.split()]
+
+temp1 = ex.loc[ex['Category'].isin(selected_crops)]
 
 crop_names = (temp1['Category'].values).tolist()
 crop_id = (temp1['Value'].values).tolist()
@@ -188,7 +190,7 @@ sentinel_masked_data = []
 # sentinel_ndvi = []
 # sentinel_evi = []
 
-filling_mode = input("Select filling method (spat/temp/mixed/none): ")
+filling_mode = input("Select filling method (spat/temp/none): ")
 file.write("Filling method selected: " + filling_mode + "\n")
 
 start_train = time.time()
@@ -254,7 +256,7 @@ if filling_mode == 'spat':
     all_data_dates_names, filled_data = zip(*sorted(zip(all_data_dates_names,filled_data)))
     print(all_data_dates_names)
 
-elif filling_mode=='temp' or filling_mode=='mixed':
+elif filling_mode=='temp':
 
     # Fill Masked Values with TEMPORAL CALCULATIONS
     print("Temporal Filling")

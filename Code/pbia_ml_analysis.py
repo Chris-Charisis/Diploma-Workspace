@@ -8,22 +8,20 @@ import csv
 from osgeo import gdal
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support #, plot_confusion_matrix
+from sklearn.metrics import confusion_matrix, precision_recall_fscore_support  # , plot_confusion_matrix
 # from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC, LinearSVR
 # from sklearn.neighbors import KNeighborsClassifier
 from imblearn.under_sampling import RandomUnderSampler, OneSidedSelection, TomekLinks, NeighbourhoodCleaningRule
-#COMBINE NDVI AND EVI INDECES TO ONE ARRAY
-
+#  COMBINE NDVI AND EVI INDECES TO ONE ARRAY
+import collections
 import pathlib
+import functions as fu
 
 os.chdir(str(pathlib.Path(__file__).parent.absolute()))
 test = pathlib.Path(__file__).parent.absolute()
 
-#%%
-import functions as fu
-#import functions
 
 workspace_path = str(pathlib.Path(pathlib.Path(__file__).parent.absolute()).parent)
 print(workspace_path)
@@ -33,7 +31,7 @@ print(workspace_path)
 # area = ''
 
 
-area_used = str(input('Give the number of the area to process (2,3,7,8): '))
+area_used = str(input('Give the number of the area to process (2,2_reduced,3,7,8): '))
 
 year = '/'
 area = '/area_' + area_used
@@ -48,18 +46,24 @@ print(plots_folder_path)
 
 metrics_list = ["Precision", "Recall", "F1 Score"]
 
-#%%
+clean_dataset = input('Clean Dataset with Neighbourhood Cleaning Rule? (yes/no): ')
+if clean_dataset == 'yes':
+    cleaned = "_cleaned"
+else:
+    cleaned = ""
 
-txt_name = str(input('Name of the file to write results: '))
-file = open(txt_name,"w")
+mode_to_process = str(input('Mode to process: (spat/temp/none): '))
+
+
+txt_name = "pbia_" + area_used + "_results_" + mode_to_process + cleaned
+file = open(txt_name, "w")
 file.write(area[1:] + "\n\n")
 
-mode_to_process = str(input('Mode to process: (spat/temp/mixed/none): '))
 
 
 # crops_only_tif = gdal.Open(labels_folder_path + 'CDL_CROPS_ONLY.tif')
 crops_only_tif = gdal.Open(labels_folder_path + 'CDL_CROPS_ONLY.tif')
-crops_only_flatten = np.array((crops_only_tif).GetRasterBand(1).ReadAsArray()) #crops_only_tif.read(1).astype('float64')
+crops_only_flatten = np.array(crops_only_tif.GetRasterBand(1).ReadAsArray())  #crops_only_tif.read(1).astype('float64')
 
 temp = gdal.Open(data_folder_path + mode_to_process + "_ndvi_raster.tif")
 data_array_combined_flatten = np.array(temp.ReadAsArray())
@@ -72,18 +76,16 @@ data_array_combined_flatten = np.transpose(data_array_combined_flatten.reshape((
 
 with open(data_folder_path + 'crops_names_and_id.csv', newline='') as f:
     reader = csv.reader(f)
-    data = dict(reader)
+    data = collections.OrderedDict(reader)
 
 crop_name = list(data.keys())
 crop_id = list(data.values())
 crop_id = [ int(x) for x in crop_id]
-selected_crops_array = np.zeros((crops_only_flatten.shape))
+selected_crops_array = np.zeros(crops_only_flatten.shape)
 for value in crop_id:
-    selected_crops_array = selected_crops_array + (crops_only_flatten==value)
+    selected_crops_array = selected_crops_array + (crops_only_flatten == value)
 
-    
-    
-    
+
 selected_crops_array = np.where(selected_crops_array,crops_only_flatten,0)
 
 
@@ -92,18 +94,16 @@ print(data_array_combined_flatten.shape)
 print(crops_only_flatten.shape)
 
 x, y = data_array_combined_flatten.shape
-print(x,y)
+print(x, y)
 unique_labels = np.unique(selected_crops_array)
 print(unique_labels)
 
 
 #%%
 
-under_sampling_analysis = input("Conduct UnderSampling Analysis? (yes/no)? ")
-if under_sampling_analysis=='yes':
-    
-    balanced = "balanced"
-    file.write("UnderSampling: " + str(under_sampling_analysis) + "\n\n")
+if clean_dataset=='yes':
+
+    file.write("UnderSampling: " + str(clean_dataset) + "\n\n")
     total_elements = len(crops_only_flatten)
     background_elements = len(crops_only_flatten[crops_only_flatten!=0])
     resample_dict = {0: int(background_elements)}
@@ -156,7 +156,6 @@ if under_sampling_analysis=='yes':
     # print(y_train.shape)
 else: 
     file.write("No UnderSampling \n\n")
-    balanced = ""
     print("No UnderSampling Train-Test splitting")
     # X_train, X_test, y_train, y_test = train_test_split(X_rus, y_rus,stratify=y_rus, test_size=0.20, random_state=42)
     
@@ -178,7 +177,7 @@ else:
 # del(data_array_combined_flatten)
 # del(crops_only_flatten)
 # gc.collect()
-"""
+
 #%%
 print("MLP Running")
 #SPAT
@@ -190,9 +189,9 @@ print("MLP Running")
 #TEMP
 #200/100/50 loss=0.09302, 0.9501,0.9676, f1 > 0.80629 , b=400 2:20 hours approximately
 #200/100/50 loss=0.02112, 0.9864,0.9931, f1 > 0.94223
-mlp_clf = MLPClassifier(hidden_layer_sizes=(200,100,50),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=10000)
+mlp_clf = MLPClassifier(hidden_layer_sizes=(28,14),max_iter=500,activation='relu',random_state=42, verbose=True,batch_size=10000)
 start_train = time.time()
-mlp_clf.fit(X_train,y_train)
+mlp_clf.fit(X_train, y_train)
 end_train = time.time()
 print("MLP train time: ", end_train - start_train)
 file.write("MLP train time: " + str(end_train - start_train) + "\n")
@@ -228,15 +227,15 @@ for i,met in enumerate(metrics_list):
     file.write(met + "\n")
     file.write(str(stat_res[i]) + "\n")
 
-fu.print_confusion_matrix(cm,np.unique(selected_crops_array))
+# fu.print_confusion_matrix(cm,np.unique(selected_crops_array))
 file.write("\n")
 
-plt.savefig(plots_folder_path + "MLP_Conf_Matrix_PBIA_" + mode_to_process + "_" + balanced + ".png")
+plt.savefig(plots_folder_path + "MLP_Conf_Matrix_PBIA_" + mode_to_process + "_" + cleaned + ".png")
 # In[24]:
 #TEMP
 # 0.95308,0.99918, f1 > 0.824845, 11 mins 'gini' n=100
 # 0.95323,0.99918, f1 > 0.823428, 14 mins 'entropy' n=100
-"""
+
 rf = RandomForestClassifier(random_state=0,n_estimators=100,n_jobs=-1)#,criterion='entropy')
 start_train = time.time()
 rf.fit(X_train, y_train)
@@ -272,16 +271,16 @@ for i,met in enumerate(metrics_list):
     file.write(met + "\n")
     file.write(str(rf_stat_res[i]) + "\n")
 
-fu.print_confusion_matrix(rf_cm,unique_labels)
+# fu.print_confusion_matrix(rf_cm,unique_labels)
 
-plt.savefig(plots_folder_path+ "RF_Conf_Matrix_PBIA_" + mode_to_process + "_" + balanced + ".png")
+plt.savefig(plots_folder_path+ "RF_Conf_Matrix_PBIA_" + mode_to_process + "_" + cleaned + ".png")
 
 opt = np.get_printoptions()
 np.set_printoptions(threshold=np.inf)
 importance = rf.feature_importances_
 print((importance))
 np.set_printoptions(**opt)
-file.write("RF importances: " + str(importance))
+file.write("RF importances: " + str(importance) +'\n')
 
 file.close()
 # In[37]:

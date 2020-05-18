@@ -183,14 +183,12 @@ def temporal_fill_missing_values(data_list, labels,filling_mode):
             # plt.figure(figsize=(50,20))
             # plt.imshow(band)
 
+            for idx,label in enumerate(dif_labels):
+                label_values = labels==label
+                values_to_fill = np.logical_and(no_data_values[index], label_values)
 
-            if filling_mode=="mixed":
-                for idx,label in enumerate(dif_labels):
-                    label_values = labels==label
-                    values_to_fill = np.logical_and(no_data_values[index], label_values)
-                    
-                    means, std = calculate_means_of_classes_in_1_band(band,labels)
-                    band = spatial_fill_missing_values_in_1_band(band,labels,means,std)
+                means, std = calculate_means_of_classes_in_1_band(band,labels)
+                band = spatial_fill_missing_values_in_1_band(band,labels,means,std)
                 
             date_data.append(band)
         data.insert(-1,date_data)
